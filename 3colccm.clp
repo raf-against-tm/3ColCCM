@@ -2,8 +2,13 @@
 
 ;RAFAEL VALLE MORALES. INGENIERIA INFORMATICA (PLAN 97)
 
+;[ARCHIVO SIN TILDES]
+
 ;El problema 3-COL consiste en determinar si un mapa puede ser coloreado unicamente con 3 colores, teniendo
-; en cuenta que las regiones contiguas deben tener colores distintos.
+; en cuenta que las regiones contiguas deben tener colores distintos. Toda instancia del problema es codificada
+; por un grafo cuyos vertices determinan las distintas regiones del mapa, y cuyas aristas definen la contiguidad de
+; dichas regiones. De manera que, los datos de entrada del sistema seran los elementos (vertices y aristas) del grafo
+; correspondiente al mapa sobre el que se desea obtener una respuesta.
 
 ;TODO BREVE EXPLICACION DEL MODELO DE COMPUTACION CELULAR CON MEMRANAS BASADO EN TEJIDOS
 ;TODO BREVE EXPLICACION DEL SISTEMA IMPLEMENTADO
@@ -27,8 +32,6 @@
 ;En la fase de verificacion, en el color de las aristas, se consideran P y PC como valores
 ; de transicion hasta obtener los colores R G y B para las mismas.
 
-;TODO Usar assert para introducir los parametros necesarios e independientemente del codigo o dentro del codigo?¿
-
 ;ESTRUCTURAS DE DATOS
 
 (deftemplate membrana
@@ -36,18 +39,25 @@
   (multislot contenido)
 )
 
-(deftemplate regla-division
+(deftemplate regla-division ;[elemento-izquierda] -> [elemento-derecha1][elemento-derecha2]
   (slot etiqueta)
   (multislot elemento-izquierda)
   (multislot elemento-derecha1)
   (multislot elemento-derecha2)
 )
 
-(deftemplate regla-comunicacion
+(deftemplate regla-comunicacion ;(etiqueta-izquierda, elementos-izquierda/elementos-derecha, etiqueta-derecha)
   (slot etiqueta-izquierda)
   (slot etiqueta-derecha)
   (multislot elementos-izquierda)
   (multislot elementos-derecha)
+)
+
+(deftemplate instancia-3col ;Define una instancia del problema 3-COL codifcado por su grafo asociado.
+  (slot n-vertices)
+  (multislot vertices) ;(vertices , A 1 , A 2 , ... , An ,)
+  (slot m-aristas)
+  (multislot aristas)  ;(aristas , A 1 2 , A 1 3 , ... , A i j ,) con [1 <= i < j <= n]
 )
 
 ;FUNCIONES AUXILIARES
@@ -56,32 +66,145 @@
   (if (> ?valor (integer ?valor)) then (+ (integer ?valor) 1) else (integer ?valor))
 )
 
-;REGLAS
+;REGLAS (INICIALIZACION, DIVISION y COMUNICACION)
 
-(defrule inicializa ;MODIFICAR PARA NUEVA IMPLEMENTACION
-  ?inif <- (initial-fact)
+;TODO Implementar regla de inicializacion para generar todas las reglas y elementos dependientes de los parametros n y m
+;TODO Usar assert para introducir los parametros necesarios numero de vertices (n) y aristas con el format A 1 2 , A 1 3 etc..
+; A continuacion por el initial-fact y los parametros se dispara la regla de inicializacion generando los hechos
+; de las reglas y las membranas pertinentes
+;TODO Incluir en inicializacion mensajes descriptivos del proceso para determinar cuando empieza el proceso real.
+;TODO realizar interfaz para pedir los datos indicando el formato
+
+;INICIALIZACION
+(defrule lee-instancia-3-col "a partir de los datos de entrada genera los hechos necesarios para inicializar el sistema"
+
+  ?entrada <- (instancia-3col (n-vertices ?n-vertices) (vertices $?vertices)
+                              (m-aristas ?m-aristas) (aristas $?aristas))
   =>
-  (retract ?inif)
-  (bind ?n (length (send [C0] get-vertices)))
-  (bind ?m (length (send [C0] get-aristas)))
-  (bind ?i 1)
-  (while (<= ?i (+ (techo (/ (log ?m) (log 2))) 12)) ;Genera instancias del contador a
-         (send [C0] put-contadores (make-instance (sym-cat a ?i) of CONTADOR (simbolo a) (valor ?i))
-                                   (send [C0] get-contadores))
-         (bind ?i (+ ?i 1)))
+  (retract ?entrada)
 
-  (bind ?i 1)
-  (while (<= ?i (+ (techo (/ (log ?m) (log 2))) 12)) ;Genera instancias del contador
-         (send [C0] put-contadores (make-instance (sym-cat a ?i) of CONTADOR (simbolo a) (valor ?i))
-                                   (send [C0] get-contadores))
-         (bind ?i (+ ?i 1)))
+  (bind ?log2-m (/ (log ?m-aristas) (log 2)))
+  (bind ?techo-log2-m (techo ?log2-m))
+
+  (assert (inicializa-vertices ?n-vertices $?vertices)  ;(A 1 , A 2 , ... , A n)
+          (inicializa-aristas ?m-aristas $?aristas)     ;(A 1 2 , A 1 3 , ... , A i j) con 1 <= i < j <= n
+          (inicializa-contador-a (+ (*  2 ?n-vertices) ?techo-log2-m 12)) ; 1 ... 2n + [log2(m)] + 12
+          (inicializa-contador-c (+ (* 2 ?n-vertices) 1) (integer (** 4  ?n-vertices))) ; 1 ... 2n + 1. 4 elevado a n copias.
+          (inicializa-contador-d (+ ?techo-log2-m 1) (integer (** 2  ?techo-log2-m)))   ; 1 ... [log2(m)] + 1. 2 elevado a [log2(m)] copias.
+          (inicializa-contador-f (+ ?techo-log2-m 7)))    ; 1 ... [log2(m)] + 7
 
 )
 
-;TODO Implementar regla de inicializacion para generar todas las reglas y elementos dependientes de los parametros n y m
+(defrule inicializacion-vertices "introduce en el sistema los elementos referentes a los vertices"
 
-;TODO Implementar regla para mostrar el resultado final a partir de la entrada dada
+  ?iv <- (inicializa-vertices ?n-vertices $?vi , A ?i , $?vf)
 
+  ?membrana0 <- (membrana (etiqueta 0) ;Entorno
+                          (contenido $?c0))
+
+  ?membrana2 <- (membrana (etiqueta 2) ;Entrada
+                          (contenido $?c2))
+
+  =>
+  (modify ?membrana0 (contenido $?c0 A ?i , R ?i , T ?i , B ?i , G ?i , RC ?i , BC ?i , GC ?i ,))
+  (modify ?membrana2 (contenido $?c2 A ?i ,))
+  (retract ?iv)
+
+  (if (neq ?n-vertices 1) then (assert (inicializa-vertices (- ?n-vertices 1) $?vi , $?vf)))
+
+)
+
+(defrule inicializacion-aristas "introduce en el sistema los elementos referentes a las aristas"
+
+    ?ia <- (inicializa-aristas ?m-aristas $?ai , A ?i ?j , $?af)
+
+    ?membrana0 <- (membrana (etiqueta 0) ;Entorno
+                            (contenido $?c0))
+
+    ?membrana2 <- (membrana (etiqueta 2) ;Entrada
+                            (contenido $?c2))
+
+  =>
+  (modify ?membrana0 (contenido $?c0 A ?i ?j , P ?i ?j , PC ?i ?j , R ?i ?j , B ?i ?j , G ?i ?j ,))
+  (modify ?membrana2 (contenido $?c2 A ?i ?j ,))
+  (retract ?ia)
+
+  (if (neq ?m-aristas 1) then (retract ?ia) (assert (inicializa-aristas (- ?m-aristas 1) $?ai , $?af)))
+
+
+)
+
+(defrule inicializacion-contador-a "genera todos los contadores del tipo a necesarios en el entorno"
+
+  ?ic <- (inicializa-contador-a ?n-contadores)
+
+  ?membrana0 <- (membrana (etiqueta 0) ;Entorno
+                          (contenido $?c0))
+
+  =>
+  (modify ?membrana0 (contenido $?c0 a ?n-contadores ,))
+  (retract ?ic)
+
+  (if (neq ?n-contadores 1) then (assert (inicializa-contador-a (- ?n-contadores 1))))
+
+)
+
+
+(defrule inicializacion-contador-c "genera todos los contadores del tipo c necesarios en el entorno"
+
+  ?ic <- (inicializa-contador-c ?n-contadores ?m-copias)
+
+  ?membrana0 <- (membrana (etiqueta 0) ;Entorno
+                          (contenido $?c0))
+
+  =>
+  (modify ?membrana0 (contenido $?c0 c ?n-contadores ,))
+  (retract ?ic)
+
+  ;Controla la generacion el numero de copias necesarias por cada elemento contador c.
+  (if (neq ?m-copias 1)
+   then (assert (inicializa-contador-c ?n-contadores (- ?m-copias 1)))
+   else (if (neq ?n-contadores 1)
+          then (bind ?n-contadores (- ?n-contadores 1))
+               (assert (inicializa-contador-c ?n-contadores (integer (** 2 (- ?n-contadores 1)))))))
+
+)
+
+(defrule inicializacion-contador-d "genera todos los contadores del tipo d necesarios en el entorno"
+
+  ?ic <- (inicializa-contador-d ?n-contadores ?m-copias)
+
+  ?membrana0 <- (membrana (etiqueta 0) ;Entorno
+                          (contenido $?c0))
+
+  =>
+  (modify ?membrana0 (contenido $?c0 d ?n-contadores ,))
+  (retract ?ic)
+
+  ;Controla la generacion el numero de copias necesarias por cada elemento contador c.
+  (if (neq ?m-copias 1)
+   then (assert (inicializa-contador-d ?n-contadores (- ?m-copias 1)))
+   else (if (neq ?n-contadores 1)
+          then (bind ?n-contadores (- ?n-contadores 1))
+               (assert (inicializa-contador-d ?n-contadores (integer (** 2 (- ?n-contadores 1)))))))
+
+)
+
+(defrule inicializa-contador-f "genera todos los contadores del tipo f necesarios en el entorno"
+
+  ?ic <- (inicializa-contador-f ?n-contadores)
+
+  ?membrana0 <- (membrana (etiqueta 0) ;Entorno
+                          (contenido $?c0))
+  =>
+  (modify ?membrana0 (contenido $?c0 f ?n-contadores ,))
+  (retract ?ic)
+
+  (if (neq ?n-contadores 2) then (assert (inicializa-contador-f (- ?n-contadores 1))))
+
+)
+
+;DIVISION
 (defrule division
   (regla-division (etiqueta ?etiqueta) ;Selecciona los elementos que definen la regla de division
                   (elemento-izquierda $?elemento-izquierda)
@@ -102,6 +225,7 @@
 
 )
 
+;COMUNICACION
 (defrule comunicacion
   (regla-comunicacion (etiqueta-izquierda ?etiqueta-izquierda)
                       (etiqueta-derecha ?etiqueta-derecha)
@@ -119,40 +243,48 @@
 
 )
 
+;TODO Implementar regla para mostrar el resultado final a partir de la entrada dada.
+;TODO  reseteat las variables globales en realidad no sera necesario pues termina la aplicacion y habria que volverla a cargar.
+
 ;DATOS INICIALES
 
-;TODO Implementar 2 ejemplos
+;TODO Usar dos hechos iniciales comentados para los 2 ejemplos que disparen automaticamente las reglas de inicializacion
 
-(deffacts recognizer-tp-system
+(deffacts tp-system ;Especificacion del sistema P basado en tejidos con division celular para el problema 3-COL
 
   ;MEMBRANAS
-  (membrana (etiqueta 0) ;Membrana que representa al entorno (salida)
-            (contenido , a 1 , a 2 , a 3 , a 4 , a 5 , a 6 ,))
+  ;La membrana 0 representa al entorno (salida) y requiere ser inicializada con datos de una instancia concreta del problema.
+  ; Ademas contiene el resto de elementos necesarios para el sistema. [0 - {yes, no}]
+  (membrana (etiqueta 0)
+            (contenido , b , D , E , e , T , S , N , bb ,)) ;Constantes presentes en todos las instancias.
 
-  (membrana (etiqueta 1)
+  (membrana (etiqueta 1) ;La membrana 1 es igual para todas las instancias del problema.
             (contenido , a 1 , b , c 1 , yes , no ,))
 
-  (membrana (etiqueta 2) ;Membrana con datos de entrada
-            (contenido , D , A 1 , A 2 , A 3 , A 1 2 , A 1 3 , A 2 3 ,))
+  ;La membrana 2 contiene, entre otros, los elementos de entrada que representan una instancia del problema, requiere ser inicializada.
+  (membrana (etiqueta 2)
+            (contenido , D ,))
 
-  ;REGLAS DE DIVISION
-  ;(regla-division (etiqueta 2) (elemento-izquierda A i) (elemento-derecha1 R i) (elemento-derecha2 T i)) ;r1i
-  ;(regla-division (etiqueta 2) (elemento-izquierda T i) (elemento-derecha1 B i) (elemento-derecha2 G i)) ;r2i
+  ;ESTRUCTURA REGLAS DE DIVISION
+  (regla-division (etiqueta 2) (elemento-izquierda A i) (elemento-derecha1 R i) (elemento-derecha2 T i)) ;r1i
+  (regla-division (etiqueta 2) (elemento-izquierda T i) (elemento-derecha1 B i) (elemento-derecha2 G i)) ;r2i
 
   ;Instancias de las reglas de division
-  (regla-division (etiqueta 2) (elemento-izquierda A 1) (elemento-derecha1 R 1) (elemento-derecha2 T 1)) ;R11
-  (regla-division (etiqueta 2) (elemento-izquierda A 2) (elemento-derecha1 R 2) (elemento-derecha2 T 2)) ;R12
-  (regla-division (etiqueta 2) (elemento-izquierda A 3) (elemento-derecha1 R 3) (elemento-derecha2 T 3)) ;R13
-  (regla-division (etiqueta 2) (elemento-izquierda T 1) (elemento-derecha1 B 1) (elemento-derecha2 G 1)) ;R21
-  (regla-division (etiqueta 2) (elemento-izquierda T 2) (elemento-derecha1 B 2) (elemento-derecha2 G 2)) ;R22
-  (regla-division (etiqueta 2) (elemento-izquierda T 3) (elemento-derecha1 B 3) (elemento-derecha2 G 3)) ;R23
+  ;(regla-division (etiqueta 2) (elemento-izquierda A 1) (elemento-derecha1 R 1) (elemento-derecha2 T 1)) ;R11
+  ;(regla-division (etiqueta 2) (elemento-izquierda A 2) (elemento-derecha1 R 2) (elemento-derecha2 T 2)) ;R12
+  ;(regla-division (etiqueta 2) (elemento-izquierda A 3) (elemento-derecha1 R 3) (elemento-derecha2 T 3)) ;R13
+  ;(regla-division (etiqueta 2) (elemento-izquierda T 1) (elemento-derecha1 B 1) (elemento-derecha2 G 1)) ;R21
+  ;(regla-division (etiqueta 2) (elemento-izquierda T 2) (elemento-derecha1 B 2) (elemento-derecha2 G 2)) ;R22
+  ;(regla-division (etiqueta 2) (elemento-izquierda T 3) (elemento-derecha1 B 3) (elemento-derecha2 G 3)) ;R23
 
-  ;REGLAS DE COMUNICACION
+  ;ESTRUCTURA REGLAS DE COMUNICACION (1 <-> 0)
   (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierdos a i) (elementos-derechos a i+1))                ;r3i
   (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierdos c i) (elementos-derechos c i+1 , c i+1))        ;r4i
 
+  ;ESTRUCTURA REGLAS DE COMUNICACION (1 <-> 2)
   (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 2) (elementos-izquierdos c 2n+1) (elementos-derechos D))                 ;r5
 
+  ;ESTRUCTURA REGLAS DE COMUNICACION (2 <-> 0)
   (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos c 2n+1) (elementos-derechos d 1 , E))           ;r6
   (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos d i) (elementos-derechos d i+1 , d i+1))        ;r7i
   (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos E) (elementos-derechos e , f 2))                ;r8
@@ -169,13 +301,16 @@
   (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos e , bb) (elementos-derechos))                   ;r19
   (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos f tlog2m+7 , e) (elementos-derechos T))         ;r20
 
+  ;ESTRUCTURA REGLAS DE COMUNICACION (2 <-> 1)
   (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 1) (elementos-izquierdos T) (elementos-derechos))                        ;r21
 
+  ;ESTRUCTURA REGLAS DE COMUNICACION (1 <-> 0)
   (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierdos b , T) (elementos-derechos S))                  ;r22
   (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierdos S , yes) (elementos-derechos))                  ;r23
   (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierdos a 2n+tlog2m+12 , b) (elementos-derechos N))     ;r24
   (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierdos N no) (elementos-derechos))                     ;r25
 
+  ;Instancias de las reglas de division
   ;(regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierda a 1) (elementos-derecha a 2))
 
 
