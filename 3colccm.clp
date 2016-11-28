@@ -86,12 +86,12 @@
   (bind ?log2-m (/ (log ?m-aristas) (log 2)))
   (bind ?techo-log2-m (techo ?log2-m))
 
-  (assert (inicializa-vertices ?n-vertices $?vertices)  ;(A 1 , A 2 , ... , A n)
-          (inicializa-aristas ?m-aristas $?aristas)     ;(A 1 2 , A 1 3 , ... , A i j) con 1 <= i < j <= n
-          (inicializa-contador-a (+ (*  2 ?n-vertices) ?techo-log2-m 12)) ; 1 ... 2n + [log2(m)] + 12
-          (inicializa-contador-c (+ (* 2 ?n-vertices) 1) (integer (** 4  ?n-vertices))) ; 1 ... 2n + 1. 4 elevado a n copias.
-          (inicializa-contador-d (+ ?techo-log2-m 1) (integer (** 2  ?techo-log2-m)))   ; 1 ... [log2(m)] + 1. 2 elevado a [log2(m)] copias.
-          (inicializa-contador-f (+ ?techo-log2-m 7)))    ; 1 ... [log2(m)] + 7
+  (assert (inicializa-vertices ?n-vertices $?vertices)    ;(A 1 , A 2 , ... , A n)
+          (inicializa-aristas ?m-aristas $?aristas)       ;(A 1 2 , A 1 3 , ... , A i j) con 1 <= i < j <= n
+          (inicializa-contadores a (+ (*  2 ?n-vertices) ?techo-log2-m 12) 1) ; 1 ... 2n + [log2(m)] + 12. 1 copia de cada elemento contador.
+          (inicializa-contadores c (+ (* 2 ?n-vertices) 1) (integer (** 4  ?n-vertices))) ; 1 ... 2n + 1. 4 elevado a n copias.
+          (inicializa-contadores d (+ ?techo-log2-m 1) (integer (** 2  ?techo-log2-m)))   ; 1 ... [log2(m)] + 1. 2 elevado a [log2(m)] copias.
+          (inicializa-contadores f (+ ?techo-log2-m 7) 1))  ; 1 ... [log2(m)] + 7. 1 copia de cada elemento contador
 
 )
 
@@ -134,73 +134,30 @@
 
 )
 
-(defrule inicializacion-contador-a "genera todos los contadores del tipo a necesarios en el entorno"
+(defrule inicializacion-contadores "genera los contadores necesarios en el entorno"
 
-  ?ic <- (inicializa-contador-a ?n-contadores)
-
-  ?membrana0 <- (membrana (etiqueta 0) ;Entorno
-                          (contenido $?c0))
-
-  =>
-  (modify ?membrana0 (contenido $?c0 a ?n-contadores ,))
-  (retract ?ic)
-
-  (if (neq ?n-contadores 1) then (assert (inicializa-contador-a (- ?n-contadores 1))))
-
-)
-
-
-(defrule inicializacion-contador-c "genera todos los contadores del tipo c necesarios en el entorno"
-
-  ?ic <- (inicializa-contador-c ?n-contadores ?m-copias)
+  ?ic <- (inicializa-contadores ?tipo ?n-contadores ?m-copias)
 
   ?membrana0 <- (membrana (etiqueta 0) ;Entorno
                           (contenido $?c0))
 
   =>
-  (modify ?membrana0 (contenido $?c0 c ?n-contadores ,))
+  (modify ?membrana0 (contenido $?c0 ?tipo ?n-contadores ,))
   (retract ?ic)
 
-  ;Controla la generacion el numero de copias necesarias por cada elemento contador c.
-  (if (neq ?m-copias 1)
-   then (assert (inicializa-contador-c ?n-contadores (- ?m-copias 1)))
-   else (if (neq ?n-contadores 1)
-          then (bind ?n-contadores (- ?n-contadores 1))
-               (assert (inicializa-contador-c ?n-contadores (integer (** 2 (- ?n-contadores 1)))))))
+  (if (> ?m-copias 1)   ;Si el numero de copias no es 1 estamos en los casos de los contadores c y d.
+    then (assert (inicializa-contadores ?tipo ?n-contadores (- ?m-copias 1)))
 
-)
+    else (if (eq ?tipo f) ;Caso del contador f.
+           then (if (> ?n-contadores 2)
+                  then (assert (inicializa-contadores f (- ?n-contadores 1) 1)))
 
-(defrule inicializacion-contador-d "genera todos los contadores del tipo d necesarios en el entorno"
-
-  ?ic <- (inicializa-contador-d ?n-contadores ?m-copias)
-
-  ?membrana0 <- (membrana (etiqueta 0) ;Entorno
-                          (contenido $?c0))
-
-  =>
-  (modify ?membrana0 (contenido $?c0 d ?n-contadores ,))
-  (retract ?ic)
-
-  ;Controla la generacion el numero de copias necesarias por cada elemento contador c.
-  (if (neq ?m-copias 1)
-   then (assert (inicializa-contador-d ?n-contadores (- ?m-copias 1)))
-   else (if (neq ?n-contadores 1)
-          then (bind ?n-contadores (- ?n-contadores 1))
-               (assert (inicializa-contador-d ?n-contadores (integer (** 2 (- ?n-contadores 1)))))))
-
-)
-
-(defrule inicializa-contador-f "genera todos los contadores del tipo f necesarios en el entorno"
-
-  ?ic <- (inicializa-contador-f ?n-contadores)
-
-  ?membrana0 <- (membrana (etiqueta 0) ;Entorno
-                          (contenido $?c0))
-  =>
-  (modify ?membrana0 (contenido $?c0 f ?n-contadores ,))
-  (retract ?ic)
-
-  (if (neq ?n-contadores 2) then (assert (inicializa-contador-f (- ?n-contadores 1))))
+           else (if (> ?n-contadores 1) ;Casos de los contadores a, c y d con todas las copias del contador i generadas.
+                  then (bind ?n-contadores (- ?n-contadores 1))
+                       (switch ?tipo
+                         (case a then (assert (inicializa-contadores ?tipo ?n-contadores ?m-copias)))
+                         (case c then (assert (inicializa-contadores ?tipo ?n-contadores (integer (** 2 (- ?n-contadores 1))))))
+                         (case d then (assert (inicializa-contadores ?tipo ?n-contadores (integer (** 2 (- ?n-contadores 1))))))))))
 
 )
 
