@@ -10,8 +10,8 @@
 ; dichas regiones. De manera que, los datos de entrada del sistema seran los elementos (vertices y aristas) del grafo
 ; correspondiente al mapa sobre el que se desea obtener una respuesta.
 
-;TODO BREVE EXPLICACION DEL MODELO DE COMPUTACION CELULAR CON MEMRANAS BASADO EN TEJIDOS
-;TODO BREVE EXPLICACION DEL SISTEMA IMPLEMENTADO
+;TODO BREVE EXPLICACION DEL MODELO DE COMPUTACION CELULAR CON MEMBRANAS BASADO EN TEJIDOS
+;TODO BREVE EXPLICACION DEL SISTEMA IMPLEMENTADO (ESTRUCTURAS, REGLAS, HECHOS, INTERFAZ)
 
 ;BIBLIOGRAFIA (REFERENCIAS Y DOCUMENTACION)
 ;REFERENCIAS
@@ -76,7 +76,7 @@
   (multislot elementos-derecha)
 )
 
-(deftemplate instancia-3col ;Define una instancia del problema 3-COL codifcado por su grafo asociado.
+(deftemplate instancia-3col ;Define una instancia del problema 3-COL a partir del grafo que lo codifica.
   (slot n-vertices)
   (multislot vertices) ;(vertices , A 1 , A 2 , ... , An ,)
   (slot m-aristas)
@@ -88,6 +88,10 @@
 (deffunction techo (?valor)
   (if (> ?valor (integer ?valor)) then (+ (integer ?valor) 1) else (integer ?valor))
 )
+
+;VARIABLES GLOBALES
+(defglobal ?*n-vertices* = 0)
+(defglobal ?*m-aristas* = 0)
 
 ;REGLAS (INICIALIZACION, DIVISION y COMUNICACION)
 
@@ -106,15 +110,54 @@
   =>
   (retract ?entrada)
 
+  ;Guarda el numero de vertices y aristas en variables globales para su uso en la inicializacion del sistema.
+  (bind ?*n-vertices* ?n-vertices)
+  (bind ?*m-aristas* ?m-aristas)
+
+  ;Variables locales auxiliares.
   (bind ?log2-m (/ (log ?m-aristas) (log 2)))
   (bind ?techo-log2-m (techo ?log2-m))
 
-  (assert (inicializa-vertices ?n-vertices $?vertices)    ;(A 1 , A 2 , ... , A n)
-          (inicializa-aristas ?m-aristas $?aristas)       ;(A 1 2 , A 1 3 , ... , A i j) con 1 <= i < j <= n
-          (inicializa-contadores a (+ (*  2 ?n-vertices) ?techo-log2-m 12) 1) ; 1 ... 2n + [log2(m)] + 12. 1 copia de cada elemento contador.
-          (inicializa-contadores c (+ (* 2 ?n-vertices) 1) (integer (** 4  ?n-vertices))) ; 1 ... 2n + 1. 4 elevado a n copias.
-          (inicializa-contadores d (+ ?techo-log2-m 1) (integer (** 2  ?techo-log2-m)))   ; 1 ... [log2(m)] + 1. 2 elevado a [log2(m)] copias.
-          (inicializa-contadores f (+ ?techo-log2-m 7) 1))  ; 1 ... [log2(m)] + 7. 1 copia de cada elemento contador
+  ;Las copias de los elementos contador se generan en orden decreciente de indice,
+  ; por ejemplo, para el contador a se generan las copias de an, despues de an-1, etc...
+  (bind ?indice-a (+ (*  2 ?n-vertices) ?techo-log2-m 12)) ;Indices de los contadores a, 1 ... 2n + [log2(m)] + 12
+  (bind ?indice-c (+ (* 2 ?n-vertices) 1))                 ;Indices de los contadores c, 1 ... 2n + 1
+  (bind ?indice-d (+ ?techo-log2-m 1))                     ;Indices de los contadores d, 1 ... [log2(m)] + 1
+  (bind ?indice-f (+ ?techo-log2-m 7))                     ;Indices de los contadores f, 1 ... [log2(m)] + 7
+
+  ;Numero de copias del primer elemento contador que se genera.
+  (bind ?copias-a 1)
+  (bind ?copias-c (integer (** 4  ?n-vertices)))        ;4 elevado a n copias de cn+1
+
+  (bind ?copias-d (* (integer (** 2  (- ?indice-d 1)))  ;3 elevado a n copias por 2 elevado a [log2(m)] de d[log2(m)]
+                     (integer (** 3 ?n-vertices))))
+
+  (bind ?copias-f (integer (** 3 ?n-vertices)))         ;3 elevado a n copias de f[log2(m) + 6]
+
+  ;En el caso del contador a, solo es necesario una copia de cada elemento, pues unicamente interactuara con ellos la membrana
+  ; etiquetada con 1.
+
+  ;En el caso del contador c, inicialmente solo interactua con la membrana etiquetada por 1, pero tras lafase de division es necesario
+  ; disponer de tantas copias del ultimo elemento c como membranas con etiqueta 2 se hayan generado. Es decir, 3 elevado a n copias
+  ; del elemento c con el ultimo indice posible para dichos contadores.
+
+  ;En el caso del contador d, en cada aplicacion de la regla de comunicacion correspondiente, una membrana etiquetada con 2
+  ; se trae 2 copias por cada elemento contador d que tiene. De manera que, al existir 3 elevado a n membranas etiquetada con 2
+  ; al final de la fase de division, es necesario generar 3 elevado a n por 2 elevado a [log2(m)].
+
+  ;En el caso del contador f deben generarse 3 elevado a n copias de cada uno, pues estos contadores interactuan con las membranas
+  ; con etiqueta 2. Tras la fase de division hay 3 elevado a n membranas con etiqueta 2.
+
+  ;Hechos para la inicializacion de vertices y aristas.
+  (assert (inicializa-vertices ?n-vertices $?vertices) ;(, A 1 , A 2 , ... , A n ,)
+          (inicializa-aristas ?m-aristas $?aristas))   ;(, A 1 2 , A 1 3 , ... , A i j ,) con 1 <= i < j <= n
+
+  ;Hechos para la inicializacion de los distintos tipos de contadores del sistema.
+  ;Las copias indicadas corresponden a las copias a generar del contador cuyo indice se ha especificado en el mismo.
+  (assert (inicializa-contadores a ?indice-a ?copias-a)
+          (inicializa-contadores c ?indice-c ?copias-c)
+          (inicializa-contadores d ?indice-d ?copias-d)
+          (inicializa-contadores f ?indice-f ?copias-f))
 
 )
 
@@ -148,7 +191,7 @@
                             (contenido $?c2))
 
   =>
-  (modify ?membrana0 (contenido $?c0 A ?i ?j , P ?i ?j , PC ?i ?j , R ?i ?j , B ?i ?j , G ?i ?j ,))
+  (modify ?membrana0 (contenido $?c0 P ?i ?j , PC ?i ?j , R ?i ?j , B ?i ?j , G ?i ?j ,))
   (modify ?membrana2 (contenido $?c2 A ?i ?j ,))
   (retract ?ia)
 
@@ -159,28 +202,29 @@
 
 (defrule inicializacion-contadores "genera los contadores necesarios en el entorno"
 
-  ?ic <- (inicializa-contadores ?tipo ?n-contadores ?m-copias)
+  ?ic <- (inicializa-contadores ?tipo ?indice ?copias)
 
   ?membrana0 <- (membrana (etiqueta 0) ;Entorno
                           (contenido $?c0))
 
   =>
-  (modify ?membrana0 (contenido $?c0 ?tipo ?n-contadores ,))
   (retract ?ic)
+  (modify ?membrana0 (contenido $?c0 ?tipo ?indice ,))
 
-  (if (> ?m-copias 1)   ;Si el numero de copias no es 1 estamos en los casos de los contadores c y d.
-    then (assert (inicializa-contadores ?tipo ?n-contadores (- ?m-copias 1)))
+  (if (> ?copias 1) ;Si el numero de copias no es 1 estamos en los casos de los contadores c y d.
+    then (assert (inicializa-contadores ?tipo ?indice (- ?copias 1)))
 
     else (if (eq ?tipo f) ;Caso del contador f.
-           then (if (> ?n-contadores 2)
-                  then (assert (inicializa-contadores f (- ?n-contadores 1) 1)))
+           then (if (> ?indice 2)
+                  then (assert (inicializa-contadores f (- ?indice 1) (** 3 ?*n-vertices*))))
 
-           else (if (> ?n-contadores 1) ;Casos de los contadores a, c y d con todas las copias del contador i generadas.
-                  then (bind ?n-contadores (- ?n-contadores 1))
+           else (if (> ?indice 1) ;Casos de los contadores a, c y d con todas las copias del contador i generadas.
+                  then (bind ?indice (- ?indice 1))
                        (switch ?tipo
-                         (case a then (assert (inicializa-contadores ?tipo ?n-contadores ?m-copias)))
-                         (case c then (assert (inicializa-contadores ?tipo ?n-contadores (integer (** 2 (- ?n-contadores 1))))))
-                         (case d then (assert (inicializa-contadores ?tipo ?n-contadores (integer (** 2 (- ?n-contadores 1))))))))))
+                         (case a then (assert (inicializa-contadores ?tipo ?indice 1)))
+                         (case c then (assert (inicializa-contadores ?tipo ?indice (integer (** 2 (- ?indice 1))))))
+                         (case d then (assert (inicializa-contadores ?tipo ?indice (* (integer (** 2 (- ?indice 1)))
+                                                                                      (integer (** 3 ?*n-vertices*))))))))))
 
 )
 
@@ -236,12 +280,13 @@
   ;La membrana 0 representa al entorno (salida) y requiere ser inicializada con datos de una instancia concreta del problema.
   ; Ademas contiene el resto de elementos necesarios para el sistema. [0 - {yes, no}]
   (membrana (etiqueta 0)
-            (contenido , b , D , E , e , T , S , N , bb ,)) ;Constantes presentes en todos las instancias.
+            (contenido , b , D , S , N ,)) ;Constantes presentes para cualquier instancia del problema
 
-  (membrana (etiqueta 1) ;La membrana 1 es igual para todas las instancias del problema.
+  (membrana (etiqueta 1) ;El estado inicial de la membrana 1 es igual para cualquier instancia del problema.
             (contenido , a 1 , b , c 1 , yes , no ,))
 
-  ;La membrana 2 contiene, entre otros, los elementos de entrada que representan una instancia del problema, requiere ser inicializada.
+  ;La membrana 2 contiene, entre otros, los elementos de entrada que representan una instancia del problema, por tanto
+  ; tambien requiere ser inicializada.
   (membrana (etiqueta 2)
             (contenido , D ,))
 
