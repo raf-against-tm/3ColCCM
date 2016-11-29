@@ -11,7 +11,7 @@
 ; correspondiente al mapa sobre el que se desea obtener una respuesta.
 
 ;TODO BREVE EXPLICACION DEL MODELO DE COMPUTACION CELULAR CON MEMBRANAS BASADO EN TEJIDOS
-;TODO BREVE EXPLICACION DEL SISTEMA IMPLEMENTADO (ESTRUCTURAS, REGLAS, HECHOS, INTERFAZ)
+;TODO BREVE EXPLICACION DEL SISTEMA IMPLEMENTADO (ESTRUCTURAS DE DATOS, REGLAS, HECHOS, INTERFAZ Y EJEMPLOS PREDEFINIDOS)
 
 ;BIBLIOGRAFIA (REFERENCIAS Y DOCUMENTACION)
 ;REFERENCIAS
@@ -55,8 +55,6 @@
 ;En la fase de verificacion, en el color de las aristas, se consideran P y PC como valores
 ; de transicion hasta obtener los colores R G y B para las mismas.
 
-;ESTRUCTURAS DE DATOS
-
 (deftemplate membrana
   (slot etiqueta)
   (multislot contenido)
@@ -95,12 +93,13 @@
 
 ;REGLAS (INICIALIZACION, DIVISION y COMUNICACION)
 
-;TODO Implementar regla de inicializacion para generar todas las reglas y elementos dependientes de los parametros n y m
-;TODO Usar assert para introducir los parametros necesarios numero de vertices (n) y aristas con el format A 1 2 , A 1 3 etc..
-; A continuacion por el initial-fact y los parametros se dispara la regla de inicializacion generando los hechos
-; de las reglas y las membranas pertinentes
+;TODO Implementar regla de inicializacion (vertices, aristas, constantes)
+;TODO Implementar regla para mostrar el resultado final a partir de la entrada dada.
+;TODO Implementar regla para lanzar interfaz de usuario.
+
+;TODO Crear dos ejemplos el el deffacts con comentarios para seleccionarlos y asi lanzar el sistema automaticamente si se desea
 ;TODO Incluir en inicializacion mensajes descriptivos del proceso para determinar cuando empieza el proceso real.
-;TODO realizar interfaz para pedir los datos indicando el formato
+;TODO Incluir mensajes descriptivos a lo largo del proceso.
 
 ;INICIALIZACION
 (defrule lee-instancia-3-col "a partir de los datos de entrada genera los hechos necesarios para inicializar el sistema"
@@ -163,7 +162,7 @@
 
 (defrule inicializacion-vertices "introduce en el sistema los elementos referentes a los vertices"
 
-  ?iv <- (inicializa-vertices ?n-vertices $?vi , A ?i , $?vf)
+  ?iv <- (inicializa-vertices ?pendientes $?vi , A ?i , $?vf)
 
   ?membrana0 <- (membrana (etiqueta 0) ;Entorno
                           (contenido $?c0))
@@ -172,17 +171,29 @@
                           (contenido $?c2))
 
   =>
-  (modify ?membrana0 (contenido $?c0 A ?i , R ?i , T ?i , B ?i , G ?i , RC ?i , BC ?i , GC ?i ,))
-  (modify ?membrana2 (contenido $?c2 A ?i ,))
   (retract ?iv)
 
-  (if (neq ?n-vertices 1) then (assert (inicializa-vertices (- ?n-vertices 1) $?vi , $?vf)))
+  ;Genera la lista de elementos referentes al vertice con indice i para despues insertarla en el entorno.
+  ; Ademas, para cada elemento crea 3 elevado a n copias, pues cada elemento asociado a un vertice interactua con cada
+  ; membrana etiquetada por 2. De manera que interactua con 3 elevado a n membranas.
+  (bind ?vertices (create$ A ?i , R ?i , T ?i , B ?i , G ?i , RC ?i , BC ?i , GC ?i ,))
+  (bind ?k 1)
+  (while (< ?k (integer (** 3 ?*n-vertices*)))
+         (bind ?vertices (insert$ ?vertices 1 A ?i , R ?i , T ?i , B ?i , G ?i , RC ?i , BC ?i , GC ?i ,))
+         (bind ?k (+ ?k 1)))
+
+  (modify ?membrana0 (contenido $?c0 ?vertices)) ;Entorno
+
+  ;En la membrana de entrada solo es necesario incluir el vertice correspondiente.
+  (modify ?membrana2 (contenido $?c2 A ?i ,))
+
+  (if (neq ?pendientes 1) then (assert (inicializa-vertices (- ?pendientes 1) $?vi , $?vf)))
 
 )
 
 (defrule inicializacion-aristas "introduce en el sistema los elementos referentes a las aristas"
 
-    ?ia <- (inicializa-aristas ?m-aristas $?ai , A ?i ?j , $?af)
+    ?ia <- (inicializa-aristas ?pendientes $?ai , A ?i ?j , $?af)
 
     ?membrana0 <- (membrana (etiqueta 0) ;Entorno
                             (contenido $?c0))
@@ -191,12 +202,23 @@
                             (contenido $?c2))
 
   =>
-  (modify ?membrana0 (contenido $?c0 P ?i ?j , PC ?i ?j , R ?i ?j , B ?i ?j , G ?i ?j ,))
-  (modify ?membrana2 (contenido $?c2 A ?i ?j ,))
   (retract ?ia)
 
-  (if (neq ?m-aristas 1) then (retract ?ia) (assert (inicializa-aristas (- ?m-aristas 1) $?ai , $?af)))
+  ;Genera la lista de elementos referentes a la arista con indices i j para despues insertarla en el entorno.
+  ; Ademas, para cada elemento crea 3 elevado a n copias, pues cada elemento asociado a una arista interactua con cada
+  ; membrana etiquetada por 2. De manera que interactua con 3 elevado a n membranas.
+  (bind ?aristas (create$ P ?i ?j , PC ?i ?j , R ?i ?j , B ?i ?j , G ?i ?j ,))
+  (bind ?k 1)
+  (while (< ?k (integer (** 3 ?*n-vertices*)))
+         (bind ?aristas (insert$ ?aristas 1 P ?i ?j , PC ?i ?j , R ?i ?j , B ?i ?j , G ?i ?j ,))
+         (bind ?k (+ ?k 1)))
 
+  (modify ?membrana0 (contenido $?c0 ?aristas)) ;Entorno
+
+  ;En la membrana de entrada solo es necesario incluir la arista correspondiente.
+  (modify ?membrana2 (contenido $?c2 A ?i ?j ,))
+
+  (if (neq ?pendientes 1) then (assert (inicializa-aristas (- ?pendientes 1) $?ai , $?af)))
 
 )
 
@@ -229,7 +251,7 @@
 )
 
 ;DIVISION
-(defrule division
+(defrule division "crea dos nuevas membranas en sustitucion de una existente y a partir de una regla de division concreta"
   (regla-division (etiqueta ?etiqueta) ;Selecciona los elementos que definen la regla de division
                   (elemento-izquierda $?elemento-izquierda)
                   (elemento-derecha1 $?elemento-derecha1)
@@ -250,7 +272,7 @@
 )
 
 ;COMUNICACION
-(defrule comunicacion
+(defrule comunicacion "intercambia ciertos elementos de dos membranas a partir una regla de comunicacion concreta"
   (regla-comunicacion (etiqueta-izquierda ?etiqueta-izquierda)
                       (etiqueta-derecha ?etiqueta-derecha)
                       (elementos-izquierda $?elementos-izquierda)
@@ -267,14 +289,11 @@
 
 )
 
-;TODO Implementar regla para mostrar el resultado final a partir de la entrada dada.
-;TODO  reseteat las variables globales en realidad no sera necesario pues termina la aplicacion y habria que volverla a cargar.
-
 ;DATOS INICIALES
 
 ;TODO Usar dos hechos iniciales comentados para los 2 ejemplos que disparen automaticamente las reglas de inicializacion
 
-(deffacts tp-system ;Especificacion del sistema P basado en tejidos con division celular para el problema 3-COL
+(deffacts tp-system "especificacion del sistema P basado en tejidos con division celular para el problema 3-COL"
 
   ;MEMBRANAS
   ;La membrana 0 representa al entorno (salida) y requiere ser inicializada con datos de una instancia concreta del problema.
@@ -338,5 +357,12 @@
   ;Instancias de las reglas de division
   ;(regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierda a 1) (elementos-derecha a 2))
 
+)
 
+(deffacts ejemplo1-instancia-3-col "datos de ejemplo de un problema 3-COL"
+  ()
+)
+
+(deffacts ejemplo2-instancia-3-col "datos de ejemplo de un problema 3-COL"
+  ()
 )
