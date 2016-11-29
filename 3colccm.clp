@@ -12,7 +12,30 @@
 
 ;TODO BREVE EXPLICACION DEL MODELO DE COMPUTACION CELULAR CON MEMRANAS BASADO EN TEJIDOS
 ;TODO BREVE EXPLICACION DEL SISTEMA IMPLEMENTADO
-;TODO BIBLIOGRAFIA.
+
+;BIBLIOGRAFIA (REFERENCIAS Y DOCUMENTACION)
+;REFERENCIAS
+;R1. Every planar graph is four colorable - Part1: Discharging
+;   [https://projecteuclid.org/euclid.ijm/1256049011]
+;R2. Every planar graph is four colorable - Part2: Reducibility
+;   [https://projecteuclid.org/euclid.ijm/1256049012]
+;R3. Solving 3-COL with Tissue P Systems
+;   [http://www.gcn.us.es/4BWMC/vol2/diaz.pdf]
+;R4. A uniform family of tP systems with cell division solving 3-COL in a linear time
+;   [http://www.sciencedirect.com/science/article/pii/S030439750800251X]
+
+;DOCUMENTACION
+
+;D1.CLIPS Documentation
+;   [http://www.clipsrules.net/?q=Documentation]
+;D2.CLIPS Basic Reference Guide
+;   [https://www.csie.ntu.edu.tw/~sylee/courses/clips/bpg/top.html]
+;D3.Conceptos basicos de la computacion celular con membranas
+;   [http://www.sema.org.es/ojs/index.php?journal=sema&page=article&op=view&path%5B%5D=191]
+;D4.Modelos de computacion celular con membranas
+;   [http://www.p-lingua.org/mecosim/matvida/course/Unidad2_Computaci%F3nCelularConMembranas.pdf]
+;D5.A CLIPS simulator for Recognizer P Systems with Active Membranes
+;   [http://cantor.cs.us.es/2BWMC/bravolpdf/CLIPS.pdf]
 
 
 ;ESTRUCTURAS DE DATOS
