@@ -10,8 +10,9 @@
 ; dichas regiones. De manera que, los datos de entrada del sistema seran los elementos (vertices y aristas) del grafo
 ; correspondiente al mapa sobre el que se desea obtener una respuesta.
 
+;TODO REVISAR TEXTO EN SECCION ESTRUCTURAS DE DATOS, FUE HECHO AL PRINCIPIO Y HAN CAMBIADO MUCHAS COSAS xD
 ;TODO BREVE EXPLICACION DEL MODELO DE COMPUTACION CELULAR CON MEMBRANAS BASADO EN TEJIDOS
-;TODO BREVE EXPLICACION DEL SISTEMA IMPLEMENTADO (ESTRUCTURAS DE DATOS, REGLAS, HECHOS, INTERFAZ Y EJEMPLOS PREDEFINIDOS)
+;TODO BREVE EXPLICACION DEL SISTEMA IMPLEMENTADO (ESTRUCTURAS DE DATOS, REGLAS, HECHOS, INTERFAZ, USO DE INTERFAZ Y EJEMPLOS PREDEFINIDOS)
 
 ;BIBLIOGRAFIA (REFERENCIAS Y DOCUMENTACION)
 ;REFERENCIAS
@@ -93,11 +94,10 @@
 
 ;REGLAS (INICIALIZACION, DIVISION y COMUNICACION)
 
-;TODO Implementar regla de inicializacion (vertices, aristas, constantes)
-;TODO Implementar regla para mostrar el resultado final a partir de la entrada dada.
+;TODO Implementar regla de inicializacion (contadores, constantes y reglas)
+;TODO Implementar regla para mostrar el resultado final a partir de la entrada dada. Necesidad de funcion contar elementos y por ejemplo ¿?
+;TODO Crear dos ejemplos con deffacts comentados para seleccionarlos y asi lanzar el sistema automaticamente si se desea.
 ;TODO Implementar regla para lanzar interfaz de usuario.
-
-;TODO Crear dos ejemplos el el deffacts con comentarios para seleccionarlos y asi lanzar el sistema automaticamente si se desea
 ;TODO Incluir en inicializacion mensajes descriptivos del proceso para determinar cuando empieza el proceso real.
 ;TODO Incluir mensajes descriptivos a lo largo del proceso.
 
@@ -224,6 +224,7 @@
 
 (defrule inicializacion-contadores "genera los contadores necesarios en el entorno"
 
+  ;La inicializacion comienza en orden decreciente de los indices. Por ejemplo an, an-1, etc...
   ?ic <- (inicializa-contadores ?tipo ?indice ?copias)
 
   ?membrana0 <- (membrana (etiqueta 0) ;Entorno
@@ -231,22 +232,29 @@
 
   =>
   (retract ?ic)
-  (modify ?membrana0 (contenido $?c0 ?tipo ?indice ,))
 
-  (if (> ?copias 1) ;Si el numero de copias no es 1 estamos en los casos de los contadores c y d.
-    then (assert (inicializa-contadores ?tipo ?indice (- ?copias 1)))
+  ;Genera la lista de elementos referentes al contador con indice i para despues insertarla en el entorno.
+  ; Ademas, para cada elemento contador crea un numero determinado de copias en funcion de las membranas que
+  ; interactuaran con el mismo. En la regla inicial lee-instancia-3-col hay mas informacion al respecto.
+  (bind ?contadores (create$ ?tipo ?indice ,))
+  (bind ?k 1)
+  (while (< ?k ?copias)
+         (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice ,))
+         (bind ?k (+ ?k 1)))
 
-    else (if (eq ?tipo f) ;Caso del contador f.
-           then (if (> ?indice 2)
-                  then (assert (inicializa-contadores f (- ?indice 1) (** 3 ?*n-vertices*))))
+  (modify ?membrana0 (contenido $?c0 ?contadores))
 
-           else (if (> ?indice 1) ;Casos de los contadores a, c y d con todas las copias del contador i generadas.
-                  then (bind ?indice (- ?indice 1))
-                       (switch ?tipo
-                         (case a then (assert (inicializa-contadores ?tipo ?indice 1)))
-                         (case c then (assert (inicializa-contadores ?tipo ?indice (integer (** 2 (- ?indice 1))))))
-                         (case d then (assert (inicializa-contadores ?tipo ?indice (* (integer (** 2 (- ?indice 1)))
-                                                                                      (integer (** 3 ?*n-vertices*))))))))))
+  (if (eq ?tipo f) ;Caso del contador f que termina en el indice 2 en lugar del 1.
+    then (if (> ?indice 2)
+           then (assert (inicializa-contadores f (- ?indice 1) (integer (** 3 ?*n-vertices*)))))
+
+    else (if (> ?indice 1) ;Casos de los contadores a, c y d que terminan en el indice 1.
+           then  (bind ?indice (- ?indice 1)) ;Proximo indice de los contadores que hay que inicializar.
+           (switch ?tipo
+                    (case a then (assert (inicializa-contadores ?tipo ?indice 1)))
+                    (case c then (assert (inicializa-contadores ?tipo ?indice (integer (** 2 (- ?indice 1))))))
+                    (case d then (assert (inicializa-contadores ?tipo ?indice (* (integer (** 2 (- ?indice 1)))
+                                                                                 (integer (** 3 ?*n-vertices*)))))))))
 
 )
 
@@ -290,8 +298,6 @@
 )
 
 ;DATOS INICIALES
-
-;TODO Usar dos hechos iniciales comentados para los 2 ejemplos que disparen automaticamente las reglas de inicializacion
 
 (deffacts tp-system "especificacion del sistema P basado en tejidos con division celular para el problema 3-COL"
 
