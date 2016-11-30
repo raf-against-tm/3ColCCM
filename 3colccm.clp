@@ -89,13 +89,13 @@
 )
 
 ;VARIABLES GLOBALES
-(defglobal ?*n-vertices* = 0)
-(defglobal ?*m-aristas* = 0)
+(defglobal ?*n-vertices* = 0
+           ?*m-aristas* = 0
+           ?*techo-log2-m* = 0)
 
 ;REGLAS (INICIALIZACION, DIVISION y COMUNICACION)
 
-;TODO Implementar regla de inicializacion (constantes y reglas)
-;TODO Implementar regla para mostrar el resultado final a partir de la entrada dada. Necesidad de funcion contar elementos y por ejemplo ¿?
+;TODO Implementar regla para mostrar el resultado final a partir de la entrada dada. Necesidad de funcion contar elementos x por ejemplo ¿?
 ;TODO Crear dos ejemplos con deffacts comentados para seleccionarlos y asi lanzar el sistema automaticamente si se desea.
 ;TODO Implementar regla para lanzar interfaz de usuario.
 ;TODO Incluir en inicializacion mensajes descriptivos del proceso para determinar cuando empieza el proceso real.
@@ -109,20 +109,20 @@
   =>
   (retract ?entrada)
 
-  ;Guarda el numero de vertices y aristas en variables globales para su uso en la inicializacion del sistema.
+  ;Guarda en variables globales el numero de vertices y aristas, necesarios para la inicializacion del sistema.
   (bind ?*n-vertices* ?n-vertices)
   (bind ?*m-aristas* ?m-aristas)
 
-  ;Variables locales auxiliares.
+  ;Guarda en una variable global el valor del techo del logaritmo en base 2 de m, necesario para la inicializacion del sistema.
   (bind ?log2-m (/ (log ?m-aristas) (log 2)))
-  (bind ?techo-log2-m (techo ?log2-m))
+  (bind ?*techo-log2-m* (techo ?log2-m))
 
   ;Las copias de los elementos contador se generan en orden decreciente de indice,
   ; por ejemplo, para el contador a se generan las copias de an, despues de an-1, etc...
-  (bind ?indice-a (+ (*  2 ?n-vertices) ?techo-log2-m 12)) ;Indices de los contadores a, 1 ... 2n + [log2(m)] + 12
-  (bind ?indice-c (+ (* 2 ?n-vertices) 1))                 ;Indices de los contadores c, 1 ... 2n + 1
-  (bind ?indice-d (+ ?techo-log2-m 1))                     ;Indices de los contadores d, 1 ... [log2(m)] + 1
-  (bind ?indice-f (+ ?techo-log2-m 7))                     ;Indices de los contadores f, 1 ... [log2(m)] + 7
+  (bind ?indice-a (+ (*  2 ?n-vertices) ?*techo-log2-m* 12)) ;Indices de los contadores a, 1 ... 2n + [log2(m)] + 12
+  (bind ?indice-c (+ (* 2 ?n-vertices) 1))                   ;Indices de los contadores c, 1 ... 2n + 1
+  (bind ?indice-d (+ ?*techo-log2-m* 1))                     ;Indices de los contadores d, 1 ... [log2(m)] + 1
+  (bind ?indice-f (+ ?*techo-log2-m* 7))                     ;Indices de los contadores f, 1 ... [log2(m)] + 7
 
   ;Numero de copias del primer elemento contador que se genera.
   (bind ?copias-a 1)
@@ -162,6 +162,10 @@
   ;Dichas constantes, concretamente E, e, T y z, interactuan con las membranas etiquetadas por 2. Luego es necesario generar
   ; las copias necesarias en funcion de la instancia del problema especificado. Es decir, 3 elevado a n copias.
   (assert (inicializa-constantes))
+
+  ;Hecho para la inicializacion de las reglas del sistema.
+  ;Dichas reglas se generan en funcion de la instancia del problema especificado.
+  (assert (inicializa-reglas))
 
 )
 
@@ -285,6 +289,81 @@
 
 )
 
+(defrule inicializacion-reglas "genera las reglas del sistema a partir de la instancia del problema 3-COL especificada"
+
+  ?ir <- (inicializa-reglas)
+
+  =>
+  (retract ?ir)
+
+  ;REGLAS DE COMUNICACION (1 <-> 0)
+  (assert (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0)
+                              (elementos-izquierda a (+ (* 2 ?*n-vertices*) ?*techo-log2-m* 12) , b) (elementos-derecha N)))  ;r24
+
+  (bind ?k 1)
+  (while (<= ?k (+ (* 2 ?*n-vertices*) ?*techo-log2-m* 11)) ;k = 1 ... 2n + [log2(m)] + 11
+
+    (assert (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0)
+                                (elementos-izquierda a ?k) (elementos-derecha a (+ ?k 1)))) ;r3k
+
+    (if (<= ?k (* 2 ?*n-vertices*)) ;k = 1 ... 2n
+      then (assert (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0)
+                                       (elementos-izquierda c ?k) (elementos-derecha c (+ ?k 1) , c (+ ?k 1)))))  ;r4k
+
+
+    (if (<= ?k ?*n-vertices*)       ;k = 1 ... n
+      then (assert ;REGLAS DE DIVISION
+                   (regla-division (etiqueta 2)
+                                   (elemento-izquierda A ?k) (elemento-derecha1 R ?k) (elemento-derecha2 T ?k))   ;r1k
+                   (regla-division (etiqueta 2)
+                                   (elemento-izquierda T ?k) (elemento-derecha1 B ?k) (elemento-derecha2 G ?k))   ;r2k
+
+                  ;REGLAS DE COMUNICACION (2 <-> 0)
+                  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0)
+                                      (elementos-izquierda R ?k , RC ?k) (elementos-derecha z))   ;r16k
+                  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0)
+                                      (elementos-izquierda B ?k , BC ?k) (elementos-derecha z))   ;r17k
+                  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0)
+                                      (elementos-izquierda G ?k , GC ?k) (elementos-derecha z)))  ;r18k
+
+            (bind ?l 1)
+            (while (< ?l ?k)        ;1 <= l < k <= n
+              (assert (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0)
+                                          (elementos-izquierda d (+ ?*techo-log2-m* 1), A ?l ?k) (elementos-derecha P ?l ?k)) ;r10lk
+                      (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0)
+                                          (elementos-izquierda P ?l ?k) (elementos-derecha R ?l ?k , PC ?l ?k))               ;r11lk
+                      (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0)
+                                          (elementos-izquierda PC ?l ?k) (elementos-derecha B ?l ?k , G ?l ?k))               ;r12lk
+                      (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0)
+                                          (elementos-izquierda R ?l , R ?l ?k) (elementos-derecha R ?l , RC ?k))              ;r13lk
+                      (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0)
+                                          (elementos-izquierda B ?l , B ?l ?k) (elementos-derecha B ?l , BC ?k))              ;r14lk
+                      (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0)
+                                          (elementos-izquierda G ?l , G ?l ?k) (elementos-derecha G ?l , GC ?k)))             ;r15lk
+
+              (bind ?l (+ ?l 1))))
+
+    (if (<= ?k ?*techo-log2-m*)     ;k = 1 ... [log2(m)]
+      then (assert (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0)
+                                       (elementos-izquierda d ?k) (elementos-derecha d (+ ?k 1) , d (+ ?k 1)))))  ;r7k
+
+    (if (and (>= ?k 2) (<= ?k (+ ?*techo-log2-m* 6))) ;k = 2 ... [log2(m)] + 6
+      then (assert (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0)
+                                       (elementos-izquierda f ?k) (elementos-derecha f (+ ?k 1)))))               ;r9k
+
+    (bind ?k (+ ?k 1))) ;Incremento para el bucle y fin de bucle.
+
+  (assert (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0)
+                              (elementos-izquierda c (+ (* 2 ?*n-vertices*) 1)) (elementos-derecha d 1 , E))  ;r6
+          (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0)
+                              (elementos-izquierda f (+ ?*techo-log2-m* 7) , e) (elementos-derecha T))        ;r20
+
+          ;REGLAS DE COMUNICACION (1 <-> 2)
+          (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 2)
+                              (elementos-izquierda c (+ (* 2 ?*n-vertices*) 1)) (elementos-derecha D)))       ;r5
+
+)
+
 ;DIVISION
 (defrule division "crea dos nuevas membranas en sustitucion de una existente y a partir de una regla de division concreta"
   (regla-division (etiqueta ?etiqueta) ;Selecciona los elementos que definen la regla de division
@@ -337,58 +416,25 @@
   (membrana (etiqueta 1) ;El estado inicial de la membrana 1 es igual para cualquier instancia del problema.
             (contenido , a 1 , b , c 1 , yes , no ,))
 
-  ;La membrana 2 contiene, entre otros, los elementos de entrada que representan una instancia del problema, por tanto
-  ; tambien requiere ser inicializada.
+  ;La membrana 2 contiene, entre otros, los elementos de entrada que representan una instancia del problema,
+  ; por tanto tambien requiere ser inicializada.
   (membrana (etiqueta 2)
             (contenido , D ,))
 
-  ;ESTRUCTURA REGLAS DE DIVISION
-  (regla-division (etiqueta 2) (elemento-izquierda A i) (elemento-derecha1 R i) (elemento-derecha2 T i)) ;r1i
-  (regla-division (etiqueta 2) (elemento-izquierda T i) (elemento-derecha1 B i) (elemento-derecha2 G i)) ;r2i
+  ;REGLAS
+  ;Las reglas incluidas en esta seccion son iguales para cualquier instancia.
 
-  ;Instancias de las reglas de division
-  ;(regla-division (etiqueta 2) (elemento-izquierda A 1) (elemento-derecha1 R 1) (elemento-derecha2 T 1)) ;R11
-  ;(regla-division (etiqueta 2) (elemento-izquierda A 2) (elemento-derecha1 R 2) (elemento-derecha2 T 2)) ;R12
-  ;(regla-division (etiqueta 2) (elemento-izquierda A 3) (elemento-derecha1 R 3) (elemento-derecha2 T 3)) ;R13
-  ;(regla-division (etiqueta 2) (elemento-izquierda T 1) (elemento-derecha1 B 1) (elemento-derecha2 G 1)) ;R21
-  ;(regla-division (etiqueta 2) (elemento-izquierda T 2) (elemento-derecha1 B 2) (elemento-derecha2 G 2)) ;R22
-  ;(regla-division (etiqueta 2) (elemento-izquierda T 3) (elemento-derecha1 B 3) (elemento-derecha2 G 3)) ;R23
+  ;REGLAS DE COMUNICACION (2 <-> 0)
+  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierda E) (elementos-derecha e , f 2))  ;r8
+  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierda e , z) (elementos-derecha))      ;r19
 
-  ;ESTRUCTURA REGLAS DE COMUNICACION (1 <-> 0)
-  (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierdos a i) (elementos-derechos a i+1))                ;r3i
-  (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierdos c i) (elementos-derechos c i+1 , c i+1))        ;r4i
+  ;REGLAS DE COMUNICACION (2 <-> 1)
+  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 1) (elementos-izquierda T) (elementos-derecha))          ;r21
 
-  ;ESTRUCTURA REGLAS DE COMUNICACION (1 <-> 2)
-  (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 2) (elementos-izquierdos c 2n+1) (elementos-derechos D))                 ;r5
-
-  ;ESTRUCTURA REGLAS DE COMUNICACION (2 <-> 0)
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos c 2n+1) (elementos-derechos d 1 , E))           ;r6
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos d i) (elementos-derechos d i+1 , d i+1))        ;r7i
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos E) (elementos-derechos e , f 2))                ;r8
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos f i) (elementos-derechos f i+1))                ;r9i
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos d tlog2m+1 , A i j) (elementos-derechos P i j)) ;r10ij
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos P i j) (elementos-derechos R i j , PC i j))     ;r11ij
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos PC i j) (elementos-derechos B i j , G i j))     ;r12ij
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos R i , R i j) (elementos-derechos R i , RC j))   ;r13ij
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos B i , B i j) (elementos-derechos B i , BC j))   ;r14ij
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos G i , G i j) (elementos-derechos G i , GC j))   ;r15ij
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos R j , RC j) (elementos-derechos bb))            ;r16j
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos B j , BC j) (elementos-derechos bb))            ;r17j
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos G j , GC j) (elementos-derechos bb))            ;r18j
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos e , bb) (elementos-derechos))                   ;r19
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 0) (elementos-izquierdos f tlog2m+7 , e) (elementos-derechos T))         ;r20
-
-  ;ESTRUCTURA REGLAS DE COMUNICACION (2 <-> 1)
-  (regla-comunicacion (etiqueta-izquierda 2) (etiqueta-derecha 1) (elementos-izquierdos T) (elementos-derechos))                        ;r21
-
-  ;ESTRUCTURA REGLAS DE COMUNICACION (1 <-> 0)
-  (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierdos b , T) (elementos-derechos S))                  ;r22
-  (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierdos S , yes) (elementos-derechos))                  ;r23
-  (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierdos a 2n+tlog2m+12 , b) (elementos-derechos N))     ;r24
-  (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierdos N no) (elementos-derechos))                     ;r25
-
-  ;Instancias de las reglas de division
-  ;(regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierda a 1) (elementos-derecha a 2))
+  ;REGLAS DE COMUNICACION (1 <-> 0)
+  (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierda b , T) (elementos-derecha S))    ;r22
+  (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierda S , yes) (elementos-derecha))    ;r23
+  (regla-comunicacion (etiqueta-izquierda 1) (etiqueta-derecha 0) (elementos-izquierda N no) (elementos-derecha))       ;r25
 
 )
 
