@@ -94,7 +94,7 @@
 
 ;REGLAS (INICIALIZACION, DIVISION y COMUNICACION)
 
-;TODO Implementar regla de inicializacion (contadores, constantes y reglas)
+;TODO Implementar regla de inicializacion (constantes y reglas)
 ;TODO Implementar regla para mostrar el resultado final a partir de la entrada dada. Necesidad de funcion contar elementos y por ejemplo ¿?
 ;TODO Crear dos ejemplos con deffacts comentados para seleccionarlos y asi lanzar el sistema automaticamente si se desea.
 ;TODO Implementar regla para lanzar interfaz de usuario.
@@ -157,6 +157,11 @@
           (inicializa-contadores c ?indice-c ?copias-c)
           (inicializa-contadores d ?indice-d ?copias-d)
           (inicializa-contadores f ?indice-f ?copias-f))
+
+  ;Hecho para la inicializacion de ciertas constantes del sistema.
+  ;Dichas constantes, concretamente E, e, T y z, interactuan con las membranas etiquetadas por 2. Luego es necesario generar
+  ; las copias necesarias en funcion de la instancia del problema especificado. Es decir, 3 elevado a n copias.
+  (assert (inicializa-constantes))
 
 )
 
@@ -258,6 +263,28 @@
 
 )
 
+(defrule inicializacion-constantes "genera ciertas constantes necesarias en el entorno"
+
+  ?ic <- (inicializa-constantes)
+
+  ?membrana0 <- (membrana (etiqueta 0) ;Entorno
+                          (contenido $?c0))
+
+  =>
+  (retract ?ic)
+
+  ;Genera la lista de ciertos elementos constantes para despues insertarla en el entorno. Para cada elemento
+  ; se crean 3 elevado a n copias, pues interactuan con las membranas etiquetadas con 2.
+  (bind ?constantes (create$ E , e , T , z ,))
+  (bind ?k 1)
+  (while (< ?k (integer (** 3 ?*n-vertices*)))
+         (bind ?constantes (insert$ ?constantes 1 E , e , T , z ,))
+         (bind ?k (+ ?k 1)))
+
+  (modify ?membrana0 (contenido $?c0 ?constantes)) ;Entorno
+
+)
+
 ;DIVISION
 (defrule division "crea dos nuevas membranas en sustitucion de una existente y a partir de una regla de division concreta"
   (regla-division (etiqueta ?etiqueta) ;Selecciona los elementos que definen la regla de division
@@ -305,7 +332,7 @@
   ;La membrana 0 representa al entorno (salida) y requiere ser inicializada con datos de una instancia concreta del problema.
   ; Ademas contiene el resto de elementos necesarios para el sistema. [0 - {yes, no}]
   (membrana (etiqueta 0)
-            (contenido , b , D , S , N ,)) ;Constantes presentes para cualquier instancia del problema
+            (contenido , b , D , S , N ,)) ;Constantes presentes para cualquier instancia del problema.
 
   (membrana (etiqueta 1) ;El estado inicial de la membrana 1 es igual para cualquier instancia del problema.
             (contenido , a 1 , b , c 1 , yes , no ,))
