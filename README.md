@@ -1,5 +1,5 @@
 # 3ColCCM
-A solution to 3-COL problem using Cellular Computing with Membranes
+**A solution to 3-COL problem using Cellular Computing with Membranes**
 
 ## Main References
 * [Solving 3-COL with Tissue P Systems](http://www.gcn.us.es/4BWMC/vol2/diaz.pdf)
