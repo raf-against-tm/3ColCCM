@@ -78,6 +78,7 @@
   (slot etiqueta-emisor)
   (slot etiqueta-receptor)
   (multislot elemento-enviado)
+  (slot numero-copias)
 
 )
 
@@ -99,7 +100,7 @@
 (defglobal ?*n-vertices* = 0
            ?*m-aristas* = 0
            ?*techo-log2-m* = 0 ;Valor necesario para la generacion de ciertos elelentos en funcion de la instancia del problema.
-           ?*id* = 1)          ; Valor de referencia para identificar nuevas membranas.
+           ?*id* = 2)          ; Valor de referencia para identificar nuevas membranas.
 
 ;REGLAS (INICIALIZACION, DIVISION y COMUNICACION)
 ;TODO Introducir datos sobre configuraciones, la membrana 0 es mucha tela, hay que buscar discriminantes para las reglas de comunicacion.
@@ -126,16 +127,15 @@
                     (estado inicializacion)
                     (contenido , b , D , S , N ,)) ;Constantes presentes para cualquier instancia del problema.
 
-          ;La membrana 1 representa la piel y ejerce de separadora entre el entorno y cualquier membrana interna.
           (membrana (etiqueta 1) ;El estado inicial de la membrana 1 es igual para cualquier instancia del problema.
-                    (identificador piel)
+                    (identificador 1)
                     (estado comunicacion)
                     (contenido , a 1 , b , c 1 , yes , no ,))
 
           ;La membrana 2 contiene, entre otros, los elementos de entrada que representan una instancia del problema,
           ; por tanto tambien requiere ser inicializada.
           (membrana (etiqueta 2)
-                    (identificador ?*id*)
+                    (identificador 2)
                     (estado inicializacion)
                     (contenido , D ,))) ;Constantes presentes para cualquier instancia del problema.
 
@@ -210,49 +210,21 @@
 
   ;VERTICES Y ARISTAS
   ;Hechos para la inicializacion de vertices y aristas.
-  (assert (inicializa-vertices ?n-vertices $?vertices) ;(, A 1 , A 2 , ... , A n ,)
-          (inicializa-aristas ?m-aristas $?aristas))   ;(, A 1 2 , A 1 3 , ... , A i j ,) con 1 <= i < j <= n
+  ; (assert (inicializa-vertices ?n-vertices $?vertices) ;(, A 1 , A 2 , ... , A n ,)
+  ;         (inicializa-aristas ?m-aristas $?aristas))   ;(, A 1 2 , A 1 3 , ... , A i j ,) con 1 <= i < j <= n
 
   ;CONTADORES
-  ;Los contadores se van generando en orden decreciente.
-  (bind ?indice-a (+ (*  2 ?n-vertices) ?*techo-log2-m* 12)) ;Indices de los contadores a, 2n + [log2(m)] + 12 ... 1
-  (bind ?indice-c (+ (* 2 ?n-vertices) 1))                   ;Indices de los contadores c, 2n + 1 ... 1
-  (bind ?indice-d (+ ?*techo-log2-m* 1))                     ;Indices de los contadores d, [log2(m)] + 1 ... 1
-  (bind ?indice-f (+ ?*techo-log2-m* 7))                     ;Indices de los contadores f, [log2(m)] + 7 ... 2
-
-  ;Numero de copias para el primer contador a que se va a generar.
-  (bind ?copias-a 1)
-
-  ;Para el contador a solo es necesario una copia de cada elemento, pues unicamente interactua con la membrana etiquetada con 1.
-
-  (bind ?copias-c (integer (** 4  ?n-vertices)))        ;4 elevado a n copias de cn+1
-
-  ;Inicialmente, el contador c interactua unicamente con la membrana etiquetada por 1, pero tras la fase de generacion es necesario
-  ; disponer de tantas copias del ultimo elemento de c como membranas con etiqueta 2 se hayan generado. Es decir, 3 elevado a n copias
-  ; del elemento c con el indice 2n+1.
-
-  (bind ?copias-d (* (integer (** 2  (- ?indice-d 1)))  ;3 elevado a n por 2 elevado a [log2(m)] copias de d[log2(m)]
-                     (integer (** 3 ?n-vertices))))
-
-  ;Para el contador d, en cada aplicacion de la regla de comunicacion correspondiente, una membrana etiquetada con 2
-  ; se trae 2 copias por cada elemento contador d que tiene. De manera que, tras la fase de generacion, al existir
-  ; 3 elevado a n membranas etiquetada con 2, es necesario generar 3 elevado a n por 2 elevado a [log2(m)].
-
-  (bind ?copias-f (integer (** 3 ?n-vertices)))         ;3 elevado a n copias de f[log2(m) + 6]
-
-  ;En el caso del contador f deben generarse 3 elevado a n copias de cada uno, pues estos contadores interactuan con las membranas
-  ; con etiqueta 2. Tras la fase de generacion hay 3 elevado a n membranas con etiqueta 2.
 
   ;Hechos para la inicializacion de los distintos tipos de contadores del sistema.
-  (assert (inicializa-contadores a ?indice-a ?copias-a)
-          (inicializa-contadores c ?indice-c ?copias-c)
-          (inicializa-contadores d ?indice-d ?copias-d)
-          (inicializa-contadores f ?indice-f ?copias-f))
+  (assert ;(inicializa-contadores a)
+          (inicializa-contadores c))
+          ;(inicializa-contadores d)
+          ;(inicializa-contadores f))
 
   ;CONSTANTES
   ;Hecho para la inicializacion de ciertas constantes del sistema.
   ;Para la constantes E, e, T y z, que interactuan con las membranas etiquetadas por 2, es necesario generar 3 elevado a n copias.
-  (assert (inicializa-constantes))
+  ;(assert (inicializa-constantes))
 
   ;REGLAS
   ;Hecho para la inicializacion de las reglas del sistema.
@@ -300,6 +272,7 @@
 
 
   (bind ?copias (* (- ?i 1) (integer (** 3 ?*n-vertices*)))) ; (i - 1)*(3 elevado a n)
+  (bind ?vertices (insert$ ?vertices 1 RC ?i , BC ?i , GC ?i ,))
   (bind ?k 1)
 
   ;El numero de copias necesarias para RC, BC y GC viene determinada por indice y el numero de celulas con etiqueta 2.
@@ -410,45 +383,83 @@
 (defrule inicializacion-contadores "genera los contadores necesarios en el entorno"
   (declare (salience 97))
 
-  ;La inicializacion comienza en orden decreciente de los indices. Por ejemplo an, an-1, etc...
-  ?ic <- (inicializa-contadores ?tipo ?indice ?copias)
+  ?ic <- (inicializa-contadores ?tipo)
 
-  ?membrana0 <- (membrana (etiqueta 0) ;Entorno
-                          (estado inicializacion)
-                          (contenido $?c0))
+  ?entorno <- (membrana (etiqueta 0)
+                        (estado inicializacion)
+                        (contenido $?c0))
 
   =>
   (retract ?ic)
 
-  ;Genera la lista de elementos referentes al contador con indice i para despues insertarla en el entorno.
-  ; Ademas, para cada elemento contador crea un numero determinado de copias en funcion de las membranas que
-  ; interactuaran con el mismo. En la regla inicial lee-instancia-3-col hay mas informacion al respecto.
-  (bind ?contadores (create$ ?tipo ?indice ,))
-  (bind ?k 1)
-  (while (< ?k ?copias)
-         (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice ,))
-         (bind ?k (+ ?k 1)))
+  (bind ?contadores (create$))
+  (switch ?tipo
+      (case a ;1 ... 2n + [log2(m)] + 12
+        then (bind ?indice-a 1)
+             (bind ?limite-a (+ (*  2 ?*n-vertices*) ?*techo-log2-m* 12))
+             ;Genera la lista de elementos referentes al contador con indice i para despues insertarla en el entorno.
+             ; Ademas, para cada elemento contador crea un numero determinado de copias en funcion de las membranas que
+             ; interactuaran con el mismo. En la regla inicial lee-instancia-3-col hay mas informacion al respecto.
+             (while (<= ?indice-a ?limite-a)
+               ;Para el contador a solo es necesario una copia de cada elemento,
+               ; pues unicamente interactua con la membrana etiquetada con 1.
+               (bind ?copias-a 1)
+               (bind ?k 1)
+               (while (<= ?k ?copias-a)
+                      (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-a ,))
+                      (bind ?k (+ ?k 1)))
 
-  (modify ?membrana0 (contenido $?c0 ?contadores))
+               (bind ?indice-a (+ ?indice-a 1)))
+        )
+      (case c ;1 ... 2n + 1
+        then (bind ?indice-c 1)
+             (bind ?limite-c (+ (* 2 ?*n-vertices*) 1))
+             (while (<= ?indice-c ?limite-c)
+               ;Inicialmente, el contador c interactua unicamente con la membrana etiquetada por 1,
+               ; pero tras la fase de generacion es necesario disponer de tantas copias del ultimo elemento de c
+               ;como membranas con etiqueta 2 se hayan generado. Es decir, 3 elevado a n copias del elemento c con el indice 2n+1.
+               (bind ?copias-c (integer (** 2 (- ?indice-c 1))))
+               (bind ?k 1)
+               (while (<= ?k ?copias-c)
+                      (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-c ,))
+                      (bind ?k (+ ?k 1)))
 
-  (if (eq ?tipo f) ;Caso del contador f que termina en el indice 2 en lugar del 1.
-    then (if (> ?indice 2)
-           then (assert (inicializa-contadores f (- ?indice 1) (integer (** 3 ?*n-vertices*))))
+               (bind ?indice-c (+ ?indice-c 1)))
+        )
+      (case d ;1 ... [log2(m)] + 1
+        then (bind ?indice-d 1)
+             (bind ?limite-d (+ ?*techo-log2-m* 1))
+             (while (<= ?indice-d ?limite-d)
+               ;Para el contador d, en cada aplicacion de la regla de comunicacion correspondiente, una membrana etiquetada con 2
+               ; se trae 2 copias por cada elemento contador d que tiene. De manera que, tras la fase de generacion, al existir
+               ; 3 elevado a n membranas etiquetada con 2, es necesario generar 3 elevado a n por 2 elevado a [log2(m)].
+               (bind ?copias-d (* (integer (** 2  (- ?indice-d 1)))  ;3 elevado a n por 2 elevado a [log2(m)] copias de d[log2(m)]
+                                  (integer (** 3 ?*n-vertices*))))
+               (bind ?k 1)
+               (while (<= ?k ?copias-d)
+                      (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-d ,))
+                      (bind ?k (+ ?k 1)))
 
-           else (assert (contadores-f))) ;Se han incluido todos los contadores f necesarios.
+               (bind ?indice-d (+ ?indice-d 1)))
+        )
+      (case f ;2 ... [log2(m)] + 7
+        then (bind ?indice-f 2)
+             (bind ?limite-f (+ ?*techo-log2-m* 7))
+             (while (<= ?indice-f ?limite-f)
+               ;En el caso del contador f deben generarse 3 elevado a n copias de cada uno, pues estos contadores
+               ; interactuan con las membranas con etiqueta 2. Tras la fase de generacion hay 3 elevado a n membranas con etiqueta 2.
+               (bind ?copias-f (integer (** 3 ?*n-vertices*)))
+               (bind ?k 1)
+               (while (<= ?k ?copias-f)
+                      (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-f ,))
+                      (bind ?k (+ ?k 1)))
 
-    else (if (> ?indice 1) ;Casos de los contadores a, c y d que terminan en el indice 1.
-           then  (bind ?indice (- ?indice 1)) ;Proximo indice de los contadores que hay que inicializar.
-                 (switch ?tipo
-                    (case a then (assert (inicializa-contadores ?tipo ?indice 1)))
-                    (case c then (assert (inicializa-contadores ?tipo ?indice (integer (** 2 (- ?indice 1))))))
-                    (case d then (assert (inicializa-contadores ?tipo ?indice (* (integer (** 2 (- ?indice 1)))
-                                                                                 (integer (** 3 ?*n-vertices*)))))))
+               (bind ?indice-f (+ ?indice-f 1)))
+        )
+      )
 
-           else  (switch ?tipo ;Se han incluido todos los contadores neceseario del tipo correspondiente.
-                   (case a then (assert (contadores-a)))
-                   (case c then (assert (contadores-c)))
-                   (case d then (assert (contadores-d))))))
+  (modify ?entorno (contenido $?c0 ?contadores))
+  (assert (contadores ?tipo))
 
 )
 
@@ -504,7 +515,7 @@
                                        (elemento1-derecha c (+ ?i 1))
                                        (elemento2-derecha c (+ ?i 1)))))
 
-    (if (<= ?i ?*n-vertices*)       ;i = 1 ... n
+    (if (<= ?i ?*n-vertices*) ;i = 1 ... n
       then (assert
                    ;REGLAS DE DIVISION
                    (regla-division (etiqueta 2) ;r1i
@@ -536,7 +547,7 @@
                                       (etiqueta-derecha 0)
                                       (elemento1-derecha z))))
 
-    (if (<= ?i ?*techo-log2-m*)     ;i = 1 ... [log2(m)]
+    (if (<= ?i ?*techo-log2-m*) ;i = 1 ... [log2(m)]
       then (assert
                    (regla-comunicacion (etiqueta-izquierda 2) ;r7i
                                        (elemento1-izquierda d ?i)
@@ -544,7 +555,7 @@
                                        (elemento1-derecha d (+ ?i 1))
                                        (elemento2-derecha d (+ ?i 1)))))
 
-    (if (and (>= ?i 2) (<= ?i (+ ?*techo-log2-m* 6))) ;k = 2 ... [log2(m)] + 6
+    (if (and (>= ?i 2) (<= ?i (+ ?*techo-log2-m* 6))) ;i = 2 ... [log2(m)] + 6
       then (assert
                     (regla-comunicacion (etiqueta-izquierda 2) ;r9i
                                         (elemento1-izquierda f ?i)
@@ -596,18 +607,16 @@
                       (elemento1-derecha $?elemento1-derecha)     ;Puede ser vacio
                       (elemento2-derecha $?elemento2-derecha))    ;Puede ser vacio
 
-  ;TODO hay que incluir identificador, probando solo estoy usando dos membranas unicas 0 y 1
-
   (or   ;En este caso la membrana especificada en la parte izquierda de la regla envia 2 elementos. (Antiport)
         (and (membrana (etiqueta ?etiqueta-izquierda)
                        (identificador ?idi)
                        (estado comunicacion)
-                       (contenido $?, $?elemento1-izquierda , $?))
+                       (contenido $? , $?elemento1-izquierda , $?))
 
              (membrana (etiqueta ?etiqueta-izquierda)
                        (identificador ?idi)
                        (estado comunicacion)
-                       (contenido $?, $?elemento2-izquierda , $?)))
+                       (contenido $? , $?elemento2-izquierda , $?)))
 
         ;En este caso la membrana especificada en la parte izquierda de la regla envia 1 elemento. (Antiport)
         (and (membrana (etiqueta ?etiqueta-izquierda)
@@ -617,7 +626,7 @@
              (test (= (length $?elemento2-izquierda) 0))))
 
   (or
-        ;En este caso la membrana especificada en la parte derecha de la regla envia 2 elementos. (Antiport)
+        ;En este caso la membrana especificada en la parte derecha de la regla envia 2 elementos diferentes. (Antiport)
         (and (membrana (etiqueta ?etiqueta-derecha)
                        (identificador ?idd)
                        (estado comunicacion)
@@ -626,7 +635,9 @@
              (membrana (etiqueta ?etiqueta-derecha)
                        (identificador ?idd)
                        (estado comunicacion)
-                       (contenido $? , $?elemento2-derecha , $?)))
+                       (contenido $? , $?elemento2-derecha , $?))
+
+             (test (neq $?elemento1-derecha $?elemento2-derecha)))
 
         ;En este caso la membrana especificada en la parte derecha de la regla envia 1 elemento. (Antiport)
         (and (membrana (etiqueta ?etiqueta-derecha)
@@ -637,36 +648,54 @@
 
         ;En este caso la membrana especificada en la parte derecha de la regla no envia ningun elemento. (Symport)
         (and (test (= (length $?elemento1-derecha) 0))
-             (test (= (length $?elemento2-derecha) 0))))
+             (test (= (length $?elemento2-derecha) 0)))
+
+         ;En este caso la membrana especificada en la parte derecha de la regla envia 2 elementos iguales. (Antiport)
+         (and  (membrana (etiqueta ?etiqueta-derecha)
+                         (estado comunicacion)
+                         (contenido $? , $?elemento1-derecha , $?))))
 
   =>
 
   (assert (envia-elemento (etiqueta-emisor ?etiqueta-izquierda)
                           (etiqueta-receptor ?etiqueta-derecha)
-                          (elemento-enviado $?elemento1-izquierda)))
+                          (elemento-enviado $?elemento1-izquierda)
+                          (numero-copias 1)))
 
   (if (neq (length $?elemento2-izquierda) 0)
     then (assert (envia-elemento (etiqueta-emisor ?etiqueta-izquierda)
                                  (etiqueta-receptor ?etiqueta-derecha)
-                                 (elemento-enviado $?elemento2-izquierda))))
+                                 (elemento-enviado $?elemento2-izquierda)
+                                 (numero-copias 1))))
 
   (if (neq (length $?elemento1-derecha) 0)
-    then (assert (envia-elemento (etiqueta-emisor ?etiqueta-derecha)
-                          (etiqueta-receptor ?etiqueta-izquierda)
-                          (elemento-enviado $?elemento1-derecha))))
+    then (if (eq $?elemento1-derecha $?elemento2-derecha)
+           then (assert (envia-elemento (etiqueta-emisor ?etiqueta-derecha)
+                                       (etiqueta-receptor ?etiqueta-izquierda)
+                                       (elemento-enviado $?elemento1-derecha)
+                                       (numero-copias 2)))
 
-  (if (neq (length $?elemento2-derecha) 0)
-    then (assert (envia-elemento (etiqueta-emisor ?etiqueta-derecha)
-                          (etiqueta-receptor ?etiqueta-izquierda)
-                          (elemento-enviado $?elemento2-derecha))))
+           else (assert (envia-elemento (etiqueta-emisor ?etiqueta-derecha)
+                                        (etiqueta-receptor ?etiqueta-izquierda)
+                                        (elemento-enviado $?elemento1-derecha)
+                                        (numero-copias 1)))
+
+                (if (neq (length $?elemento2-derecha) 0)
+                  then (assert (envia-elemento (etiqueta-emisor ?etiqueta-derecha)
+                                        (etiqueta-receptor ?etiqueta-izquierda)
+                                        (elemento-enviado $?elemento2-derecha)
+                                        (numero-copias 1))))))
 
 )
 
 (defrule realiza-envio "envia, de una membrana a otra, los elementos determinados por una regla de comunicacion concreta"
+  (declare (salience 94)) ;Antes de aplicar alguna regla nueva de comunicacion o division hay que realizar los envios pendientes
+                          ; de la regla de comunicacion recien disparada y que ha generado la activacion de esta regla.
 
   ?envio <- (envia-elemento (etiqueta-emisor ?etiqueta-emisor)
                             (etiqueta-receptor ?etiqueta-receptor)
-                            (elemento-enviado $?elemento-enviado))
+                            (elemento-enviado $?elemento-enviado)
+                            (numero-copias ?n-copias))
 
   ?membrana-emisora <- (membrana (etiqueta ?etiqueta-emisor)
                                 (estado comunicacion)
@@ -680,27 +709,44 @@
   (modify ?membrana-emisora (contenido $?cei , $?cef))
   (modify ?membrana-receptora (contenido $?cr $?elemento-enviado ,))
 
+  (if (> ?n-copias 1)
+    then (assert (envia-elemento (etiqueta-emisor ?etiqueta-emisor)
+                              (etiqueta-receptor ?etiqueta-receptor)
+                              (elemento-enviado $?elemento-enviado)
+                              (numero-copias (- ?n-copias 1)))))
+
 )
 
 (defrule inicia-fase-generacion "realiza los cambios pertinenetes en el sistema para que empiece la fase de generacion"
-  (constantes) (vertices) (aristas) (reglas)
-  (contadores-a) (contadores-c) (contadores-d) (contadores-f) ;Se han inicializado todos los componentes del sistema.
 
-  ?membrana0 <- (membrana (etiqueta 0) ;Entorno
-                          (estado inicializacion))
+  ;Se han inicializado todos los componentes del sistema.
+  ; ?constantes <- (constantes)
+  ; ?vertices <- (vertices)
+  ; ?aristas <- (aristas)
+  ; ?reglas <- (reglas)
+  ; ?contadores-a <- (contadores a)
+  ?contadores-c <- (contadores c)
+  ; ?contadores-d <- (contadores d)
+  ; ?contadores-f <- (contadores f)
 
+  ;Membranas que se encuentran en fase de inicializacion.
+  ?entorno <- (membrana (etiqueta 0)
+                        (estado inicializacion))
 
-  ?membrana2 <- (membrana (etiqueta 2)
-                          (estado inicializacion))
+  ?entrada <- (membrana (etiqueta 2)
+                        (estado inicializacion))
 
   =>
-  (modify ?membrana0 (estado comunicacion))
-  (modify ?membrana2 (estado division))
+  ;(retract ?constantes ?vertices ?aristas ?reglas ?contadores-a ?contadores-c ?contadores-d ?contadores-f)
+  (retract ?contadores-c)
+  (modify ?entrada (estado division))
+  (modify ?entorno (estado comunicacion))
 
 )
 
 (defrule inicia-fase-verificacion "realiza los cambios pertinenetes en el sistema para que empiece la fase de verificacion"
-  ;Cuando el contador c en la membrana etiquetada por 1 llegue al paso 2n+1 se inicia la fase de verificacion.
+  ;Cuando el contador c en la membrana etiquetada por 1 llegue al paso 2n se inicia la fase de verificacion.
+  ; En el paso 2n el indice del ultimo contador es 2n+1.
 
   ?membrana1 <- (membrana (etiqueta 1)
                           (estado comunicacion)
