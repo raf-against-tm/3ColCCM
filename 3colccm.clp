@@ -120,10 +120,9 @@
            ?*id* = 2)          ;Valor de referencia para identificar nuevas membranas producto de la mitosis de otra.
 
 ;REGLAS (INICIALIZACION, DIVISION y COMUNICACION)
-;TODO Implementar regla para mostrar el resultado final a partir de la entrada dada. Necesidad de funcion contar elementos x por ejemplo ¿?
-;TODO Implementar regla para lanzar interfaz de usuario e introducir instancias del problema manualmente
-;TODO Incluir en inicializacion mensajes descriptivos del proceso para determinar cuando empieza el proceso real.
-;TODO Incluir mensajes descriptivos a lo largo del proceso de decision.
+;TODO Incluir mensajes descriptivos del proceso para determinar cuando empieza el proceso real.
+;TODO Implementar regla para mostrar el resultado final a partir de la entrada dada.
+;TODO Implementar regla para lanzar interfaz de usuario e introducir instancias del problema manualmente o elegir de entre los 2 ejemplos propuestos.
 
 ;INICIALIZACION
 (defrule lee-instancia-3-col "a partir de los datos de entrada genera los hechos necesarios para inicializar el sistema"
@@ -230,17 +229,11 @@
           (inicializa-aristas ?m-aristas $?aristas))   ;(, A 1 2 , A 1 3 , ... , A i j ,) con 1 <= i < j <= n
 
   ;CONTADORES
-
   ;Hechos para la inicializacion de los distintos tipos de contadores del sistema.
   (assert (inicializa-contadores a)
           (inicializa-contadores c)
           (inicializa-contadores d)
           (inicializa-contadores f))
-
-  ;REGLAS
-  ;Hecho para la inicializacion de las reglas del sistema.
-  ;Las reglas se generan a partir del numero de vertices y las aristas que definen las instancia del problema 3-COL.
-  (assert (inicializa-reglas))
 
 )
 
@@ -262,6 +255,37 @@
   (modify ?entorno (contenido $?c0 A ?i , R ?i , T ?i , B ?i , G ?i , RC ?i , BC ?i , GC ?i ,))
   (modify ?entrada (contenido $?c2 A ?i ,))
 
+  ;Reglas asociadas a los vertices.
+  (assert ;REGLAS DE DIVISION
+          (regla-division (etiqueta 2) ;r1i
+                           (elemento-izquierda A ?i)
+                           (elemento1-derecha R ?i)
+                           (elemento2-derecha T ?i))
+
+          (regla-division (etiqueta 2) ;r2i
+                           (elemento-izquierda T ?i)
+                           (elemento1-derecha B ?i)
+                           (elemento2-derecha G ?i))
+
+          ;REGLAS DE COMUNICACION (2 <-> 0)
+          (regla-comunicacion (etiqueta-izquierda 2) ;r16i
+                              (elemento1-izquierda R ?i)
+                              (elemento2-izquierda RC ?i)
+                              (etiqueta-derecha 0)
+                              (elemento1-derecha z))
+
+          (regla-comunicacion (etiqueta-izquierda 2) ;r17i
+                              (elemento1-izquierda B ?i)
+                              (elemento2-izquierda BC ?i)
+                              (etiqueta-derecha 0)
+                              (elemento1-derecha z))
+
+          (regla-comunicacion (etiqueta-izquierda 2) ;r18i
+                              (elemento1-izquierda G ?i)
+                              (elemento2-izquierda GC ?i)
+                              (etiqueta-derecha 0)
+                              (elemento1-derecha z)))
+
   ;Comprueba si existen vertices que no han sido procesados.
   (if (neq ?pendientes 1)
     then (assert (inicializa-vertices (- ?pendientes 1) $?vi , $?vf))
@@ -271,7 +295,7 @@
 )
 
 (defrule inicializacion-aristas "introduce en el sistema los elementos referentes a las aristas"
-    (declare (salience 97)) ;Se inicializan en tercer lugar.
+    (declare (salience 97)) ;Se inicializan en ultimo lugar.
 
     ?ia <- (inicializa-aristas ?pendientes $?ai , A ?i ?j , $?af)
 
@@ -288,7 +312,8 @@
   (modify ?entorno (contenido $?c0 P ?i ?j , PC ?i ?j , R ?i ?j , B ?i ?j , G ?i ?j ,))
   (modify ?entrada (contenido $?c2 A ?i ?j ,))
 
-  ;Reglas asociadas a las aristas. (2 <-> 0)
+  ;Reglas asociadas a las aristas.
+  ;REGLAS DE COMUNICACION (2 <-> 0)
   (assert (regla-comunicacion (etiqueta-izquierda 2)  ;r10ij
                               (elemento1-izquierda d (+ ?*techo-log2-m* 1))
                               (elemento2-izquierda A ?i ?j)
@@ -348,117 +373,77 @@
   =>
   (retract ?ic)
 
-  (bind ?contadores (create$)) ;Contendra los contadores generados para luego insertarlos en el entorno.
-
   (switch ?tipo
       (case a ;1 ... 2n + [log2(m)] + 12
         then (bind ?indice-a 1)
+             (bind ?contadores (create$ ?tipo ?indice-a ,))
              (bind ?limite-a (+ (*  2 ?*n-vertices*) ?*techo-log2-m* 12))
 
-             ;Genera la lista de elementos referentes al contador.
-             (while (<= ?indice-a ?limite-a)
-               (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-a ,))
-               (bind ?indice-a (+ ?indice-a 1))))
+             ;Genera la lista de elementos referentes al contador correspondiente.
+             (while (< ?indice-a ?limite-a)
+
+                ;Regla asociada al contador a con indice i
+                ;REGLA DE COMUNICACION (1 <-> 0)
+                (assert (regla-comunicacion (etiqueta-izquierda 1) ;r3i
+                                            (elemento1-izquierda a ?indice-a)
+                                            (etiqueta-derecha 0)
+                                            (elemento1-derecha a (+ ?indice-a 1))))
+
+                (bind ?indice-a (+ ?indice-a 1))
+                (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-a ,))))
 
       (case c ;1 ... 2n + 1
         then (bind ?indice-c 1)
+             (bind ?contadores (create$ ?tipo ?indice-c ,))
              (bind ?limite-c (+ (* 2 ?*n-vertices*) 1))
-             (while (<= ?indice-c ?limite-c)
-               (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-c ,))
-               (bind ?indice-c (+ ?indice-c 1))))
+             (while (< ?indice-c ?limite-c)
+
+                ;Regla asociada al contador c con indice i
+                ;REGLA DE COMUNICACION (1 <-> 0)
+                (assert (regla-comunicacion (etiqueta-izquierda 1) ;r4i
+                                            (elemento1-izquierda c ?indice-c)
+                                            (etiqueta-derecha 0)
+                                            (elemento1-derecha c (+ ?indice-c 1))
+                                            (elemento2-derecha c (+ ?indice-c 1))))
+
+                (bind ?indice-c (+ ?indice-c 1))
+                (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-c ,))))
 
       (case d ;1 ... [log2(m)] + 1
         then (bind ?indice-d 1)
+             (bind ?contadores (create$ ?tipo ?indice-d ,))
              (bind ?limite-d (+ ?*techo-log2-m* 1))
-             (while (<= ?indice-d ?limite-d)
-               (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-d ,))
-               (bind ?indice-d (+ ?indice-d 1))))
+             (while (< ?indice-d ?limite-d)
+
+                ;Regla asociada al contador d con indice i
+                ;REGLA DE COMUNICACION (2 <-> 0)
+                (assert (regla-comunicacion (etiqueta-izquierda 2) ;r7i
+                                            (elemento1-izquierda d ?indice-d)
+                                            (etiqueta-derecha 0)
+                                            (elemento1-derecha d (+ ?indice-d 1))
+                                            (elemento2-derecha d (+ ?indice-d 1))))
+
+                (bind ?indice-d (+ ?indice-d 1))
+                (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-d ,))))
 
       (case f ;2 ... [log2(m)] + 7
         then (bind ?indice-f 2)
+             (bind ?contadores (create$ ?tipo ?indice-f ,))
              (bind ?limite-f (+ ?*techo-log2-m* 7))
-             (while (<= ?indice-f ?limite-f)
-               (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-f ,))
-               (bind ?indice-f (+ ?indice-f 1)))))
+             (while (< ?indice-f ?limite-f)
+
+                ;Regla asociada al contador f con indice i
+                ;REGLA DE COMUNICACION (2 <-> 0)
+                (assert (regla-comunicacion (etiqueta-izquierda 2) ;r9i
+                                           (elemento1-izquierda f ?indice-f)
+                                           (etiqueta-derecha 0)
+                                           (elemento1-derecha f (+ ?indice-f 1))))
+
+                (bind ?indice-f (+ ?indice-f 1))
+                (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-f ,)))))
 
   (modify ?entorno (contenido $?c0 ?contadores))
   (assert (contadores ?tipo)) ;Se han incluido todos los contadores del tipo indicado.
-
-)
-
-(defrule inicializacion-reglas "genera las reglas del sistema a partir de la instancia del problema 3-COL especificada"
-  (declare (salience 96)) ;Se inicializan en ultimo lugar.
-  ?ir <- (inicializa-reglas)
-
-  =>
-  (retract ?ir)
-
-  ;REGLAS DE COMUNICACION (1 <-> 0)
-  (bind ?i 1)
-  (while (<= ?i (+ (* 2 ?*n-vertices*) ?*techo-log2-m* 11)) ;i = 1 ... 2n + [log2(m)] + 11
-
-    (assert (regla-comunicacion (etiqueta-izquierda 1) ;r3i
-                                (elemento1-izquierda a ?i)
-                                (etiqueta-derecha 0)
-                                (elemento1-derecha a (+ ?i 1))))
-
-    (if (<= ?i (* 2 ?*n-vertices*)) ;i = 1 ... 2n
-      then (assert (regla-comunicacion (etiqueta-izquierda 1) ;r4i
-                                       (elemento1-izquierda c ?i)
-                                       (etiqueta-derecha 0)
-                                       (elemento1-derecha c (+ ?i 1))
-                                       (elemento2-derecha c (+ ?i 1)))))
-
-    (if (<= ?i ?*n-vertices*) ;i = 1 ... n
-      then (assert
-                   ;REGLAS DE DIVISION
-                   (regla-division (etiqueta 2) ;r1i
-                                   (elemento-izquierda A ?i)
-                                   (elemento1-derecha R ?i)
-                                   (elemento2-derecha T ?i))
-
-                   (regla-division (etiqueta 2) ;r2i
-                                   (elemento-izquierda T ?i)
-                                   (elemento1-derecha B ?i)
-                                   (elemento2-derecha G ?i))
-
-                  ;REGLAS DE COMUNICACION (2 <-> 0)
-                  (regla-comunicacion (etiqueta-izquierda 2) ;r16i
-                                      (elemento1-izquierda R ?i)
-                                      (elemento2-izquierda RC ?i)
-                                      (etiqueta-derecha 0)
-                                      (elemento1-derecha z))
-
-                  (regla-comunicacion (etiqueta-izquierda 2) ;r17i
-                                      (elemento1-izquierda B ?i)
-                                      (elemento2-izquierda BC ?i)
-                                      (etiqueta-derecha 0)
-                                      (elemento1-derecha z))
-
-                  (regla-comunicacion (etiqueta-izquierda 2) ;r18i
-                                      (elemento1-izquierda G ?i)
-                                      (elemento2-izquierda GC ?i)
-                                      (etiqueta-derecha 0)
-                                      (elemento1-derecha z))))
-
-    (if (<= ?i ?*techo-log2-m*) ;i = 1 ... [log2(m)]
-      then (assert
-                   (regla-comunicacion (etiqueta-izquierda 2) ;r7i
-                                       (elemento1-izquierda d ?i)
-                                       (etiqueta-derecha 0)
-                                       (elemento1-derecha d (+ ?i 1))
-                                       (elemento2-derecha d (+ ?i 1)))))
-
-    (if (and (>= ?i 2) (<= ?i (+ ?*techo-log2-m* 6))) ;i = 2 ... [log2(m)] + 6
-      then (assert
-                    (regla-comunicacion (etiqueta-izquierda 2) ;r9i
-                                        (elemento1-izquierda f ?i)
-                                        (etiqueta-derecha 0)
-                                        (elemento1-derecha f (+ ?i 1)))))
-
-    (bind ?i (+ ?i 1))) ;Incremento para el bucle.
-
-  (assert (reglas)) ;Se han incluido todas las reglas generadas a partir de la instancia del problema.
 
 )
 
@@ -587,7 +572,7 @@
 )
 
 (defrule realiza-envio "envia, de una membrana a otra, los elementos determinados por una regla de comunicacion concreta"
-  (declare (salience 95)) ;Antes de aplicar alguna regla nueva de comunicacion o division hay que realizar los envios pendientes
+  (declare (salience 96)) ;Antes de aplicar alguna regla nueva de comunicacion o division hay que realizar los envios pendientes
                           ; de la regla de comunicacion recien disparada y que ha generado la activacion de esta regla.
 
   ?envio <- (envia-elemento (etiqueta-emisor ?etiqueta-emisor)
@@ -631,7 +616,6 @@
   ?contadores-d <- (contadores d)
   ?contadores-f <- (contadores f)
   ?aristas <- (aristas)
-  ?reglas <- (reglas)
 
   ;Membranas que se encuentran en fase de inicializacion.
   ?entorno <- (membrana (etiqueta 0)
@@ -641,7 +625,7 @@
                         (estado inicializacion))
 
   =>
-  (retract ?vertices ?contadores-a ?contadores-c ?contadores-d ?contadores-f ?aristas ?reglas)
+  (retract ?vertices ?contadores-a ?contadores-c ?contadores-d ?contadores-f ?aristas)
   (modify ?entrada (estado division))
   (modify ?entorno (estado comunicacion))
 
