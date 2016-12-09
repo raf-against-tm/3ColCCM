@@ -6,7 +6,7 @@
 
 ;El problema 3-COL consiste en determinar si un mapa puede ser coloreado unicamente con 3 colores, teniendo
 ; en cuenta que las regiones contiguas deben tener colores distintos. Toda instancia del problema es codificada
-; por un grafo cuyos vertices determinan las distintas regiones del mapa, y cuyas aristas definen la contiguidad de
+; por un grafo cuyos vertices determinan las distintas regiones del mapa, y cuyas aristas definen las fronteras entre
 ; dichas regiones. De manera que, los datos de entrada del sistema seran los elementos (vertices y aristas) del grafo
 ; correspondiente al mapa sobre el que se desea obtener una respuesta.
 
@@ -40,7 +40,7 @@
 (deftemplate membrana "datos que definen una membrana dentro del sistema p"
 
   ;El campo estado tiene como objetivo modelar el comportamiento respecto al proceso de division celular
-  ; de los sistemas p basado en tejidos. De manera que, una membrana que va a dividirse no puede ser objeto
+  ; de los sistemas p en modo tejido. De manera que, una membrana que va a dividirse no puede ser objeto
   ; de ninguna comunicacion con otras membranas. Ademas se usara para determinar la fase de inicializacion
   ; en la que se introduciran los elementos especificos de la instancia del problema 3-COL a resolver.
 
@@ -136,7 +136,6 @@
   (assert
           ;La membrana 0 representa al entorno (salida) y requiere ser inicializada con los elementos que codifican una instancia
           ; del problema 3-COL. Ademas contiene el resto de elementos necesarios para el sistema. [0 - {yes, no}]
-          ;Se supone que el entorno contiene el numero suficiente de copias de cada elemento.
           (membrana (etiqueta 0)
                     (identificador 0)
                     (estado inicializacion)
@@ -147,8 +146,8 @@
                     (estado comunicacion)
                     (contenido , a 1 , b , c 1 , yes , no ,))
 
-          ;La membrana 2 contiene, entre otros, los elementos de entrada que codifican una instancia del problema 3-COL.
-          ; Por tanto tambien requiere ser inicializada con dichos elementos.
+          ;La membrana 2 contiene, entre otros, los elementos de entrada que codifican una instancia del problema 3-COL. Por tanto
+          ; tambien requiere ser inicializada con dichos elementos.
           (membrana (etiqueta 2)
                     (identificador 2)
                     (estado inicializacion)
@@ -256,8 +255,8 @@
   (modify ?entrada (contenido $?c2 A ?i ,))
 
   ;Reglas asociadas a los vertices.
-  (assert ;REGLAS DE DIVISION
-          (regla-division (etiqueta 2) ;r1i
+  ;REGLAS DE DIVISION
+  (assert (regla-division (etiqueta 2) ;r1i
                            (elemento-izquierda A ?i)
                            (elemento1-derecha R ?i)
                            (elemento2-derecha T ?i))
@@ -265,10 +264,10 @@
           (regla-division (etiqueta 2) ;r2i
                            (elemento-izquierda T ?i)
                            (elemento1-derecha B ?i)
-                           (elemento2-derecha G ?i))
+                           (elemento2-derecha G ?i)))
 
-          ;REGLAS DE COMUNICACION (2 <-> 0)
-          (regla-comunicacion (etiqueta-izquierda 2) ;r16i
+   ;REGLAS DE COMUNICACION (2 <-> 0)
+   (assert (regla-comunicacion (etiqueta-izquierda 2) ;r16i
                               (elemento1-izquierda R ?i)
                               (elemento2-izquierda RC ?i)
                               (etiqueta-derecha 0)
@@ -487,8 +486,10 @@
                       (elemento1-derecha $?elemento1-derecha)     ;Puede ser vacio, si este elemtno es vacio el segundo tambien lo es.
                       (elemento2-derecha $?elemento2-derecha))    ;Puede ser vacio
 
-  ;A continuacion se recoge toda la casuistica para toda posible comunicacion en la familia p que resuelve el problema 3-COL.
-  (or   ;La membrana especificada en la parte izquierda de la regla envia 2 elementos. (Antiport)
+  ;A continuacion se recoge la casuistica para toda comunicacion posible en la familia p que resuelve el problema 3-COL.
+
+  (or
+        ;La membrana especificada en la parte izquierda de la regla envia 2 elementos. (Antiport)
         (and (membrana (etiqueta ?etiqueta-izquierda)
                        (identificador ?idi)
                        (estado comunicacion)
@@ -590,20 +591,20 @@
   =>
   (retract ?envio)
 
+  ;El entorno contiene un numero suficiente de copias para todo elemento necesario en el proceso, por ello
+  ; consideramos que dichos elementos del entorno no son alterados por la aplicacion de reglas.
+
+  (if (neq ?etiqueta-emisor 0) ;Si la emisora no es el entorno hay que eliminar el elemento de su region.
+    then (modify ?membrana-emisora (contenido $?cei , $?cef)))
+
   ;Genera las copias necesarias si ha enviado mas de un elemento identico.
   (bind ?elementos (create$ $?elemento-enviado ,))
   (while (> ?n-copias 1)
-    (bind ?elementos (insert$ ?elementos 1 $?elemento-enviado ,)) ;TODO aqui mete un FALSE por que sí loco
+    (bind ?elementos (insert$ ?elementos 1 $?elemento-enviado ,))
     (bind ?n-copias (- ?n-copias 1)))
 
-  (modify ?membrana-receptora (contenido $?cr ?elementos))
-
-  (if (neq ?etiqueta-emisor 0) ;Si la emisora no es el entorno hay que eliminar el elemento de su region.
-    then   (modify ?membrana-emisora (contenido $?cei , $?cef)))
-
-  ;En el caso del entorno, se supone que contiene los elementos necesarios en un numero suficiente de copias,
-  ; consideramos que siempre habra de los elementos requeridos por lo que para que el sistema funcione de manera mas
-  ; eficiente con respecto a la equiparacion de patrones de CLIPS se ha optado por no elimnar los objetos del mismo.
+  (if (neq ?etiqueta-receptor 0) ;Si la receptora no es el entorno hay que introducir el/los elemento/s en su region.
+    then   (modify ?membrana-receptora (contenido $?cr ?elementos)))
 
 )
 
