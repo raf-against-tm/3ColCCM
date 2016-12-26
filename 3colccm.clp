@@ -116,16 +116,15 @@
 )
 
 ;INSTANCIAS DEL PROBLEMA 3-COL DE EJEMPLO
-(deffacts ejemplo1-instancia-3-col "datos de ejemplo de un problema 3-COL" ;Existe solucion 3-COL.
-  (instancia-3col (n-vertices 3) (vertices , A 1 , A 2 , A 3 ,)
-                  (m-aristas 3) (aristas , A 1 2 , A 1 3 , A 2 3 ,))
-
-)
-
-; (deffacts ejemplo2-instancia-3-col "datos de ejemplo de un problema 3-COL" ;No existe solucion 3-COL.
-;   (instancia-3col (n-vertices 4) (vertices , A 1 , A 2 , A 3 , A 4 ,)
-;                   (m-aristas 4) (aristas , A 1 2 , A 1 3 , A 1 4 , A 2 3 , A 2 4 , A 3 4 ,))
+; (deffacts ejemplo1-instancia-3-col "datos de ejemplo de un problema 3-COL" ;Existe solucion 3-COL.
+;   (instancia-3col (n-vertices 3) (vertices , A 1 , A 2 , A 3 ,)
+;                   (m-aristas 3) (aristas , A 1 2 , A 1 3 , A 2 3 ,))
 ; )
+
+(deffacts ejemplo2-instancia-3-col "datos de ejemplo de un problema 3-COL" ;No existe solucion 3-COL.
+  (instancia-3col (n-vertices 4) (vertices , A 1 , A 2 , A 3 , A 4 ,)
+                  (m-aristas 4) (aristas , A 1 2 , A 1 3 , A 1 4 , A 2 3 , A 2 4 , A 3 4 ,))
+)
 
 ; (deffacts ejemplo3-instancia-3-col "datos de ejemplo de un problema 3-COL" ;Existe solucion 2-COL
 ;   (instancia-3col (n-vertices 4) (vertices , A 1 , A 2 , A 3 , A 4 ,)
@@ -509,6 +508,19 @@
 
 )
 
+(defrule finaliza-computacion "termina la computacion si se ha llegado a una configuracion de parada"
+
+  ?estado <- (estado actualizacion)
+
+  (membrana (etiqueta 0)
+            (contenido $? , yes|no , $?))
+
+  =>
+  (retract ?estado)
+  (assert (estado respuesta))
+
+)
+
 ;DIVISION
 (defrule division "crea dos nuevas membranas en sustitucion de una existente y a partir de una regla de division concreta"
   ;Si se aplica una regla de division, en el mismo paso de la transicion no podra aplicarse ninguna otra regla ya sea
@@ -714,7 +726,7 @@
 
   ;Para que el proceso no se vea afectado en exceso por la equiparacion de patrones con los elementos
   ; del entorno, solo se enviaran los elementos al mismo cuando se trate de aquellos que definen la solucion del problema.
-  (if (or (<> ?id-receptor 0) (eq $?elemento-enviado yes) (eq $?elemento-enviado no))
+  (if (or (<> ?id-receptor 0) (member$ yes ?elementos) (member$ no ?elementos))
     then (modify ?membrana-receptora (contenido $?cr ?elementos)))
 
 )
@@ -850,6 +862,9 @@
                     (configuracion ?psiguiente))
           (membrana (identificador ?id)
                     (configuracion ?siguiente&:(= ?siguiente (+ ?psiguiente 1)))))
+
+  (not (membrana (etiqueta 0)
+                 (contenido $? , yes|no , $?)))
 
   =>
   (retract ?pa ?ps ?estado)
