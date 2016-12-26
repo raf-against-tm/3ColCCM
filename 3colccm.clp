@@ -592,15 +592,20 @@
                      (contenido $?, $?elemento1-izquierda , $?)))
 
       ;La membrana especificada en la parte izquierda de la regla envia 2 elementos. (Antiport)
-      (and (membrana (etiqueta ?etiqueta-izquierda)
+      (and (test (<> (length $?elemento2-izquierda) 0))
+           (membrana (etiqueta ?etiqueta-izquierda)
                      (identificador ?id-izquierda)
                      (configuracion ?pactual)
-                     (contenido $? , $?elemento1-izquierda , $?))
+                     (contenido $?cii1 , $?elemento1-izquierda , $?cif1))
 
            (membrana (etiqueta ?etiqueta-izquierda)
                      (identificador ?id-izquierda)
                      (configuracion ?pactual)
-                     (contenido $? , $?elemento2-izquierda , $?))))
+                     (contenido $?cii2 , $?elemento2-izquierda , $?cif2))
+
+           ;Comprueba que no selecciona el mismo elemento 2 veces en caso de que sean iguales.
+           (test (neq $?cii1 $?cii2))
+           (test (neq $?cif1 $?cif2))))
 
   (or ;PARTE DERECHA DE LA REGLA.
       ;Se trata de una comunicacion con el entorno.
@@ -752,20 +757,23 @@
           (and (test (= (length $?elemento2-izquierda) 0))
 
                (membrana (etiqueta ?etiqueta-izquierda)
-                         (identificador ?id-izquierda)
                          (configuracion ?pactual)
                          (contenido $?, $?elemento1-izquierda , $?)))
 
           ;La membrana especificada en la parte izquierda de la regla envia 2 elementos. (Antiport)
-          (and (membrana (etiqueta ?etiqueta-izquierda)
+          (and (test (<> (length $?elemento2-izquierda) 0))
+              (membrana (etiqueta ?etiqueta-izquierda)
                          (identificador ?id-izquierda)
                          (configuracion ?pactual)
-                         (contenido $? , $?elemento1-izquierda , $?))
+                         (contenido $?cii1 , $?elemento1-izquierda , $?cii2))
 
                (membrana (etiqueta ?etiqueta-izquierda)
                          (identificador ?id-izquierda)
                          (configuracion ?pactual)
-                         (contenido $? , $?elemento2-izquierda , $?))))
+                         (contenido $?cif1 , $?elemento2-izquierda , $?cif2))
+
+                         (test (neq $?cii1 $?cii2))
+                         (test (neq $?cif1 $?cif2))))
 
       (or ;PARTE DERECHA DE LA REGLA.
           ;Se trata de una comunicacion con el entorno.
@@ -773,7 +781,6 @@
             (test (= ?etiqueta-derecha 0))
 
             (membrana (etiqueta 0)
-                      (identificador ?id-derecha)
                       (configuracion ?pactual)))
 
           ;La membrana especificada en la parte derecha de la regla no envia ningun elemento. (Symport)
@@ -781,7 +788,6 @@
             (test (= (length $?elemento1-derecha) 0)) ; Si el elemento 1 es vacio el segundo tambien lo es.
 
             (membrana (etiqueta ?etiqueta-derecha)
-                      (identificador ?id-derecha)
                       (configuracion ?pactual)))
 
           (and ;La membrana especificada en la parte derecha de la regla envia 1 elemento. (Antiport)
@@ -790,7 +796,6 @@
             (test (= (length $?elemento2-derecha) 0))
 
             (membrana (etiqueta ?etiqueta-derecha)
-                      (identificador ?id-derecha)
                       (configuracion ?pactual)
                       (contenido $? , $?elemento1-derecha , $?)))
 
@@ -857,14 +862,16 @@
 
   ?estado <- (estado actualizacion)
 
+  ;El sistema no se encuenta en la configuracion de parada.
+  (not (membrana (etiqueta 0)
+                 (contenido $? , yes|no , $?)))
+
   ;Verifica que toda membrana tiene su copia con el indice de la configuracion siguiente a la misma.
   (forall (membrana (identificador ?id)
                     (configuracion ?psiguiente))
+
           (membrana (identificador ?id)
                     (configuracion ?siguiente&:(= ?siguiente (+ ?psiguiente 1)))))
-
-  (not (membrana (etiqueta 0)
-                 (contenido $? , yes|no , $?)))
 
   =>
   (retract ?pa ?ps ?estado)
