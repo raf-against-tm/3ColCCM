@@ -45,7 +45,7 @@
     (type INTEGER))
   (slot configuracion
     (type INTEGER)
-    (default 0))
+    (default 1))
   (multislot contenido) ; , ... , copias elemento indice-1 inidice-2 ... , ... ,
 
 )
@@ -575,17 +575,17 @@
   ;Incluye copias de las membranas 0, 1 y 2 con el indice de la configuracion siguiente.
   (assert (membrana (etiqueta 0)
                     (identificador 0)
-                    (configuracion 1)
+                    (configuracion 2)
                     (contenido $?c0))
 
           (membrana (etiqueta 1)
                     (identificador 1)
-                    (configuracion 1)
+                    (configuracion 2)
                     (contenido $?c1))
 
           (membrana (etiqueta 2)
                     (identificador 2)
-                    (configuracion 1)
+                    (configuracion 2)
                     (contenido $?c2)))
 
 )
