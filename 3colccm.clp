@@ -104,8 +104,8 @@
 
 ;HECHOS INICIALES
 (deffacts estado-inicial-computacion "conjunto de hechos necesarios para controlar los pasos de la computacion"
-  (paso-actual 0)
-  (paso-siguiente 1)
+  (paso-actual 1)
+  (paso-siguiente 2)
 
   ;Hecho que define el estado del sistema. Se usa para llevar a cabo la inicializacion del sistema,
   ; la aplicacion de reglas en una transicion, la actualizacion de las estrucutras de datos para pasar de una
@@ -149,17 +149,11 @@
   (if (= (length$ $?elemento) 0) ;Se trata de un elemento vacio.
     then (return ?contenido))
 
-  (bind ?posiciones (member$ $?elemento ?contenido))
+  (bind ?posiciones (member$ (create$ $?elemento ,) ?contenido))
 
   (if (neq ?posiciones FALSE)
-    then (if (> (length$ (create$ ?posiciones)) 1)
-           then (bind ?pos1    (- (nth$ 1 ?posiciones) 1))
-                (bind ?pos2    (nth$ 2 ?posiciones))
-
-           ;Cuando se trata de un elemento sin indices la variable ?posiciones es un unico valor.
-           else (bind ?pos1 (- ?posiciones 1))
-                (bind ?pos2 ?posiciones))
-
+    then (bind ?pos1    (- (nth$ 1 ?posiciones) 1))
+         (bind ?pos2    (- (nth$ 2 ?posiciones) 1))
 
          (bind ?copias  (nth$ ?pos1 ?contenido))
 
@@ -176,17 +170,11 @@
   (if (= (length$ $?elemento) 0) ;Se trata de un elemento vacio.
     then (return ?contenido))
 
-  (bind ?posiciones (member$ $?elemento ?contenido))
+  (bind ?posiciones (member$ (create$ $?elemento ,) ?contenido))
 
   (if (neq ?posiciones FALSE)
-    then (if (> (length$ (create$ ?posiciones)) 1)
-           then (bind ?pos1    (- (nth$ 1 ?posiciones) 1))
-                (bind ?pos2    (nth$ 2 ?posiciones))
-
-           ;Cuando se trata de un elemento sin indices la variable ?posiciones es un unico valor.
-           else (bind ?pos1 (- ?posiciones 1))
-                (bind ?pos2 ?posiciones))
-
+    then (bind ?pos1    (- (nth$ 1 ?posiciones) 1))
+         (bind ?pos2    (- (nth$ 2 ?posiciones) 1))
 
          (bind ?copias  (nth$ ?pos1 ?contenido))
          (bind ?restantes (- ?copias ?k))
@@ -206,22 +194,16 @@
   (if (= (length$ $?elemento) 0) ;Se trata de un elemento vacio.
     then (return TRUE))
 
-  (bind ?posiciones (member$ $?elemento ?contenido))
+  (bind ?posiciones (member$ (create$ $?elemento ,) ?contenido))
 
   (if (neq ?posiciones FALSE)
-    then (if (> (length$ (create$ ?posiciones)) 1)
-           then (bind ?pos1    (- (nth$ 1 ?posiciones) 1))
-                (bind ?pos2    (nth$ 2 ?posiciones))
+    then (bind ?pos1    (- (nth$ 1 ?posiciones) 1))
+         (bind ?pos2    (- (nth$ 2 ?posiciones) 1))
 
-           ;Cuando se trata de un elemento sin indices la variable ?posiciones es un unico valor.
-           else (bind ?pos1 (- ?posiciones 1))
-                (bind ?pos2 ?posiciones))
+         (bind ?copias  (nth$ ?pos1 ?contenido))
+         (bind ?restantes (- ?copias ?k))
 
-
-          (bind ?copias  (nth$ ?pos1 ?contenido))
-          (bind ?restantes (- ?copias ?k))
-
-          (return (>= ?restantes 0)))
+         (return (>= ?restantes 0)))
 
 )
 
@@ -253,7 +235,7 @@
     ; del problema 3-COL. Ademas contiene el resto de elementos necesarios para el sistema. [0 - {yes, no}]
     (membrana (etiqueta 0)
               (identificador 0)
-              (contenido , 1 b , 1 D , ?copias E , ?copias e , ?copias T , 1 S , 1 N , ?copias z ,))
+              (contenido , 1 b , 1 D , ?copias E , ?copias e , ?copias t , 1 S , 1 N , ?copias z ,))
 
     (membrana (etiqueta 1) ;El estado inicial de la membrana 1 es igual para cualquier instancia del problema.
               (identificador 1)
@@ -271,7 +253,7 @@
   (assert ;REGLAS DE COMUNICACION (1 <-> 0)
           (regla-comunicacion (etiqueta-izquierda 1)  ;r22
                               (elemento1-izquierda b)
-                              (elemento2-izquierda T)
+                              (elemento2-izquierda t)
                               (etiqueta-derecha 0)
                               (elemento1-derecha S))
 
@@ -313,7 +295,7 @@
                               (elemento1-izquierda f (+ ?*techo-log2-m* 7))
                               (elemento2-izquierda e)
                               (etiqueta-derecha 0)
-                              (elemento1-derecha T))
+                              (elemento1-derecha t))
 
           ;REGLAS DE COMUNICACION (1 <-> 2)
           (regla-comunicacion (etiqueta-izquierda 1) ;r5
@@ -323,7 +305,7 @@
 
           ;REGLAS DE COMUNICACION (2 <-> 1)
           (regla-comunicacion (etiqueta-izquierda 2) ;r21
-                              (elemento1-izquierda T)
+                              (elemento1-izquierda t)
                               (etiqueta-derecha 1)))
 
   ;VERTICES Y ARISTAS
@@ -736,11 +718,11 @@
          (test (existe-elemento $?cs-derecha 2 $?elemento1-derecha)))
 
       ;ENVIA DOS ELEMENTOS DISTINTOS
-    (and (test (neq $?elemento1-izquierda $?elemento2-izquierda))
-         (test (existe-elemento $?ca-izquierda 1 $?elemento1-izquierda))
-         (test (existe-elemento $?cs-izquierda 1 $?elemento1-izquierda))
-         (test (existe-elemento $?ca-izquierda 1 $?elemento2-izquierda))
-         (test (existe-elemento $?cs-izquierda 1 $?elemento2-izquierda))))
+    (and (test (neq $?elemento1-derecha $?elemento2-derecha))
+         (test (existe-elemento $?ca-derecha 1 $?elemento1-derecha))
+         (test (existe-elemento $?cs-derecha 1 $?elemento1-derecha))
+         (test (existe-elemento $?ca-derecha 1 $?elemento2-derecha))
+         (test (existe-elemento $?cs-derecha 1 $?elemento2-derecha))))
 
   =>
 
@@ -749,7 +731,7 @@
     then (bind ?contenido-mi-actual    (elimina-elementos $?ca-izquierda 2 $?elemento1-izquierda))
          (bind ?contenido-mi-siguiente (elimina-elementos $?cs-izquierda 2 $?elemento1-izquierda))
 
-         (bind ?contenido-md-siguiente (agrega-elementos $cs-derecha 2 $?elemento1-izquierda))
+         (bind ?contenido-md-siguiente (agrega-elementos $?cs-derecha 2 $?elemento1-izquierda))
 
     else (bind ?contenido-mi-actual    (elimina-elementos $?ca-izquierda 1 $?elemento1-izquierda))
          (bind ?contenido-mi-actual    (elimina-elementos ?contenido-mi-actual 1 $?elemento2-izquierda))
@@ -768,7 +750,7 @@
 
    else (bind ?contenido-md-actual    (elimina-elementos $?ca-derecha 1 $?elemento1-derecha))
         (bind ?contenido-md-actual    (elimina-elementos ?contenido-md-actual 1 $?elemento2-derecha))
-        (bind ?contenido-md-siguiente (elimina-elementos $?cs-derecha 1 $?elemento1-derecha))
+        (bind ?contenido-md-siguiente (elimina-elementos ?contenido-md-siguiente 1 $?elemento1-derecha))
         (bind ?contenido-md-siguiente (elimina-elementos ?contenido-md-siguiente 1 $?elemento2-derecha))
 
         (bind ?contenido-mi-siguiente (agrega-elementos ?contenido-mi-siguiente 1 $?elemento1-derecha))
@@ -782,613 +764,74 @@
 
 )
 
-; (defrule comunicacion-symport-1 "modela la comunicacion tipo symport en la que se envia un unico elemento"
-;
-;   ;Estado actual del sistema
-;   (estado transicion)
-;
-;   (paso-actual ?pactual)
-;   (paso-siguiente ?psiguiente)
-;
-;   ;Regla que especifica la comunicacion a realizar.
-;   (regla-comunicacion (etiqueta-izquierda ?etiqueta-izquierda)
-;                       (elemento1-izquierda $?elemento1-izquierda)
-;                       (elemento2-izquierda)
-;                       (etiqueta-derecha ?etiqueta-derecha)
-;                       (elemento1-derecha)
-;                       (elemento2-derecha))
-;
-;   ;El elemento a enviar se encuentra en la membrana emisora con configuracion actual y siguiente.
-;   (membrana (etiqueta ?etiqueta-izquierda)
-;             (identificador ?id-izquierda)
-;             (configuracion ?pactual)
-;             (contenido $?cei1 , ? $?elemento1-izquierda , $?cef1))
-;
-;   (membrana (identificador ?id-izquierda)
-;             (configuracion ?psiguiente)
-;             (contenido $?cei2 , ? ?$?elemento1-izquierda , $?cef2))
-;
-;   ;Receptora.
-;   (membrana (etiqueta ?etiqueta-derecha)
-;             (identificador ?id-derecha))
-;
-;   =>
-;   ;Incluye en la memoria de trabajo un hecho para llevar a cabo el envio de los elementos entre las membranas.
-;   (assert (envia-elemento (identificador-emisor ?id-izquierda)
-;                           (identificador-receptor ?id-derecha)
-;                           (elemento-enviado 1 $?elemento1-izquierda)))
-;
-; )
-;
-; (defrule comunicacion-symport-2 "modela la comunicacion tipo symport en la que se envian dos elementos"
-;
-;   ;Estado actual del sistema
-;   (estado transicion)
-;
-;   (paso-actual ?pactual)
-;   (paso-siguiente ?psiguiente)
-;
-;   ;Regla que especifica la comunicacion a realizar.
-;   (regla-comunicacion (etiqueta-izquierda ?etiqueta-izquierda)
-;                       (elemento1-izquierda $?elemento1-izquierda)
-;                       (elemento2-izquierda $?elemento2-izquierda)
-;                       (etiqueta-derecha ?etiqueta-derecha)
-;                       (elemento1-derecha)
-;                       (elemento2-derecha))
-;
-;   ;Los elementos a enviar se encuentran en la membrana emisora con configuracion actual y siguiente.
-;
-;   (or
-;
-;     ;ENVIA DOS ELEMENTOS IGUALES
-;     (and (test (eq $?elemento1-izquierda $?elemento2-izquierda))
-;
-;          (membrana (etiqueta ?etiqueta-izquierda)
-;                    (identificador ?id-izquierda)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ?k&:(>= ?k 2) $?elemento1-izquierda , $?))
-;
-;          (membrana (etiqueta ?etiqueta-izquierda)
-;                    (identificador ?id-izquierda)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ?k $?elemento1-izquierda , $?)))
-;
-;     ;ENVIA DOS ELEMENTOS DISTINTOS
-;     (and (test (neq $?elemento1-izquierda $?elemento2-izquierda))
-;
-;          (membrana (etiqueta ?etiqueta-izquierda)
-;                    (identificador ?id-izquierda)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ? $?elemento1-izquierda , $?))
-;
-;          (membrana (etiqueta ?etiqueta-izquierda)
-;                    (identificador ?id-izquierda)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ? $?elemento1-izquierda , $?))
-;
-;
-;          (membrana (identificador ?id-izquierda)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ? $?elemento2-izquierda , $?))
-;
-;          (membrana (identificador ?id-izquierda)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ? $?elemento2-izquierda , $?))))
-;
-;   ;Receptora
-;   (membrana (etiqueta ?etiqueta-derecha)
-;             (identificador ?id-derecha))
-;
-;   =>
-;   ;Incluye en la memoria de trabajo el/los hecho/s para llevar a cabo el envio de los elementos entre membranas.
-;   (if (eq $?elemento1-izquierda $?elemento2-izquierda)
-;
-;     ;ENVIA DOS ELEMENTOS IGUALES
-;     then (assert (envia-elemento (identificador-emisor ?id-izquierda)
-;                                  (identificador-receptor ?id-derecha)
-;                                  (elemento-enviado 2 $?elemento1-izquierda)))
-;
-;     ;ENVIA DOS ELEMENTOS DISTINTOS
-;     else (assert (envia-elemento (identificador-emisor ?id-izquierda)
-;                                  (identificador-receptor ?id-derecha)
-;                                  (elemento-enviado 1 $?elemento1-izquierda))
-;
-;                  (envia-elemento (identificador-emisor ?id-izquierda)
-;                                  (identificador-receptor ?id-derecha)
-;                                  (elemento-enviado 1 $?elemento2-izquierda))))
-;
-; )
-;
-; (defrule comunicacion-antiport-1 "modela la comunicacion tipo antiport en la que se envia y se recibe un elemento"
-;
-;   ;Estado actual del sistema
-;   (estado transicion)
-;
-;   (paso-actual ?pactual)
-;   (paso-siguiente ?psiguiente)
-;
-;   ;Regla que especifica la comunicacion a realizar. (ANTIPORT 1 <-> 1)
-;   (regla-comunicacion (etiqueta-izquierda ?etiqueta-izquierda)
-;                       (elemento1-izquierda $?elemento1-izquierda)
-;                       (elemento2-izquierda)
-;                       (etiqueta-derecha ?etiqueta-derecha)
-;                       (elemento1-derecha $?elemento1-derecha)
-;                       (elemento2-derecha))
-;
-;   ;El elemento a enviar se encuentra en la membrana emisora con configuracion actual y siguiente.
-;
-;   ;PARTE IZQUIERDA DE LA REGLA
-;   (membrana (etiqueta ?etiqueta-izquierda)
-;             (identificador ?id-izquierda)
-;             (configuracion ?pactual)
-;             (contenido $? , ? $?elemento1-izquierda , $?))
-;
-;   (membrana (identificador ?id-izquierda)
-;             (configuracion ?psiguiente)
-;             (contenido $? , ? $?elemento1-izquierda , $?))
-;
-;   ;PARTE DERECHA DE LA REGLA
-;   (membrana (etiqueta ?etiqueta-derecha)
-;             (identificador ?id-derecha)
-;             (configuracion ?pactual)
-;             (contenido $? , ? $?elemento1-derecha , $?))
-;
-;   (membrana (identificador ?id-derecha)
-;             (configuracion ?psiguiente)
-;             (contenido $? , ? $?elemento1-derecha , $?))
-;
-;   =>
-;   ;Incluye en la memoria de trabajo los hechos para llevar a cabo el envio de los elementos entre membranas.
-;   (assert (envia-elemento (identificador-emisor ?id-izquierda)
-;                           (identificador-receptor ?id-derecha)
-;                           (elemento-enviado 1 $?elemento1-izquierda))
-;
-;           (envia-elemento (identificador-emisor ?id-derecha)
-;                           (identificador-receptor ?id-izquierda)
-;                           (elemento-enviado 1 $?elemento1-derecha)))
-;
-; )
-;
-; (defrule comunicacion-antiport-2 "modela la comunicacion tipo antiport en la que se envia un elemento y se reciben dos"
-;
-;   ;Estado actual del sistema
-;   (estado transicion)
-;
-;   (paso-actual ?pactual)
-;   (paso-siguiente ?psiguiente)
-;
-;   ;Regla que especifica la comunicacion a realizar. (ANTIPORT 1 <-> 2)
-;   (regla-comunicacion (etiqueta-izquierda ?etiqueta-izquierda)
-;                       (elemento1-izquierda $?elemento1-izquierda)
-;                       (elemento2-izquierda)
-;                       (etiqueta-derecha ?etiqueta-derecha)
-;                       (elemento1-derecha $?elemento1-derecha)
-;                       (elemento2-derecha $?elemento2-derecha))
-;
-;   ;El elemento a enviar se encuentra en la membrana emisora con configuracion actual y siguiente.
-;
-;   ;PARTE IZQUIERDA DE LA REGLA
-;   (membrana (etiqueta ?etiqueta-izquierda)
-;             (identificador ?id-izquierda)
-;             (configuracion ?pactual)
-;             (contenido $? , ? $?elemento1-izquierda , $?))
-;
-;   (membrana (identificador ?id-izquierda)
-;             (configuracion ?psiguiente)
-;             (contenido $? , ? $?elemento1-izquierda , $?))
-;
-;   ;PARTE DERECHA DE LA REGLA
-;   (or
-;     ;ENVIA DOS ELEMENTOS IGUALES
-;     (and (test (eq $?elemento1-derecha $?elemento2-derecha))
-;
-;          (membrana (etiqueta ?etiqueta-derecha)
-;                    (identificador ?id-derecha)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ?k&:(>= ?k 2) $?elemento1-derecha , $?))
-;
-;          (membrana (identificador ?id-derecha)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ?k $?elemento1-derecha , $?)))
-;
-;     ;ENVIA DOS ELEMENTOS DISTINTOS
-;     (and (test (neq $?elemento1-derecha $?elemento2-derecha))
-;
-;          (membrana (identificador ?id-derecha)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ? $?elemento1-derecha , $?))
-;
-;          (membrana (identificador ?id-derecha)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ? $?elemento1-derecha , $?))
-;
-;
-;          (membrana (identificador ?id-derecha)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ? $?elemento2-derecha , $?))
-;
-;          (membrana (identificador ?id-derecha)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ? $?elemento2-derecha , $?))))
-;
-;   =>
-;   ;Incluye en la memoria de trabajo los hechos para llevar a cabo el envio de los elementos entre membranas.
-;   (assert (envia-elemento (identificador-emisor ?id-izquierda)
-;                           (identificador-receptor ?id-derecha)
-;                           (elemento-enviado 1 $?elemento1-izquierda)))
-;
-;   (if (eq $?elemento1-derecha $?elemento2-derecha)
-;
-;     ;ENVIA DOS ELEMENTOS IGUALES
-;     then (assert (envia-elemento (identificador-emisor ?id-derecha)
-;                                  (identificador-receptor ?id-izquierda)
-;                                  (elemento-enviado 2 $?elemento1-derecha)))
-;
-;     ;ENVIA DOS ELEMENTOS DISTINTOS
-;     else (assert (envia-elemento (identificador-emisor ?id-derecha)
-;                                  (identificador-receptor ?id-izquierda)
-;                                  (elemento-enviado 1 $?elemento1-derecha))
-;
-;                  (envia-elemento (identificador-emisor ?id-derecha)
-;                                  (identificador-receptor ?id-izquierda)
-;                                  (elemento-enviado 1 $?elemento2-derecha))))
-;
-; )
-;
-; (defrule comunicacion-antiport-3 "modela la comunicacion tipo antiport en la que se envian dos elemento y se recibe uno"
-;
-;   ;Estado actual del sistema
-;   (estado transicion)
-;
-;   (paso-actual ?pactual)
-;   (paso-siguiente ?psiguiente)
-;
-;   ;Regla que especifica la comunicacion a realizar. (ANTIPORT 2 <-> 1)
-;   (regla-comunicacion (etiqueta-izquierda ?etiqueta-izquierda)
-;                       (elemento1-izquierda $?elemento1-izquierda)
-;                       (elemento2-izquierda $?elemento2-izquierda)
-;                       (etiqueta-derecha ?etiqueta-derecha)
-;                       (elemento1-derecha $?elemento1-derecha)
-;                       (elemento2-derecha))
-;
-;   ;El elemento a enviar se encuentra en la membrana emisora con configuracion actual y siguiente.
-;
-;   ;PARTE IZQUIERDA DE LA REGLA
-;   (or
-;     ;ENVIA DOS ELEMENTOS IGUALES
-;     (and (test (eq $?elemento1-izquierda $?elemento2-izquierda))
-;
-;          (membrana (etiqueta ?etiqueta-izquierda)
-;                    (identificador ?id-izquierda)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ?k&:(>= ?k 2) $?elemento1-izquierda , $?))
-;
-;          (membrana (etiqueta ?etiqueta-izquierda)
-;                    (identificador ?id-izquierda)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ?k $?elemento1-izquierda , $?)))
-;
-;     ;ENVIA DOS ELEMENTOS DISTINTOS
-;     (and (test (neq $?elemento1-izquierda $?elemento2-izquierda))
-;
-;          (membrana (etiqueta ?etiqueta-izquierda)
-;                    (identificador ?id-izquierda)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ? $?elemento1-izquierda , $?))
-;
-;          (membrana (etiqueta ?etiqueta-izquierda)
-;                    (identificador ?id-izquierda)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ? $?elemento1-izquierda , $?))
-;
-;
-;          (membrana (identificador ?id-izquierda)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ? $?elemento2-izquierda , $?))
-;
-;          (membrana (identificador ?id-izquierda)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ? $?elemento2-izquierda , $?))))
-;
-;
-;   ;PARTE DERECHA DE LA REGLA
-;   (membrana (etiqueta ?etiqueta-derecha)
-;             (identificador ?id-derecha)
-;             (configuracion ?pactual)
-;             (contenido $? , ? $?elemento1-derecha , $?))
-;
-;   (membrana (identificador ?id-derecha)
-;             (configuracion ?psiguiente)
-;             (contenido $? , ? $?elemento1-derecha , $?))
-;
-;   =>
-;   ;Incluye en la memoria de trabajo el/los hecho/s para llevar a cabo el envio de los elementos entre membranas.
-;   (if (eq $?elemento1-izquierda $elemento2-izquierda)
-;
-;     ;ENVIA DOS ELEMENTOS IGUALES
-;     then (assert (envia-elemento (identificador-emisor ?id-izquierda)
-;                                  (identificador-receptor ?id-derecha)
-;                                  (elemento-enviado 2 $?elemento1-izquierda)))
-;
-;     ;ENVIA DOS ELEMENTOS DISTINTOS
-;     else (assert (envia-elemento (identificador-emisor ?id-izquierda)
-;                                  (identificador-receptor ?id-derecha)
-;                                  (elemento-enviado 1 $?elemento1-izquierda))
-;
-;                  (envia-elemento (identificador-emisor ?id-izquierda)
-;                                  (identificador-receptor ?id-derecha)
-;                                  (elemento-enviado 1 $?elemento2-izquierda))))
-;
-;     (assert (envia-elemento (identificador-emisor ?id-derecha)
-;                             (identificador-receptor ?id-izquierda)
-;                             (elemento-enviado 1 $?elemento1-derecha)))
-;
-; )
-;
-; (defrule comunicacion-antiport-4 "modela la comunicacion tipo antiport en la que se envian dos elemento y se reciben otros dos"
-;   ;Estado actual del sistema
-;   (estado transicion)
-;
-;   (paso-actual ?pactual)
-;   (paso-siguiente ?psiguiente)
-;
-;   ;Regla que especifica la comunicacion a realizar. (ANTIPORT 2 <-> 2)
-;   (regla-comunicacion (etiqueta-izquierda ?etiqueta-izquierda)
-;                       (elemento1-izquierda $?elemento1-izquierda)
-;                       (elemento2-izquierda $?elemento2-izquierda)
-;                       (etiqueta-derecha ?etiqueta-derecha)
-;                       (elemento1-derecha $?elemento1-derecha)
-;                       (elemento2-derecha $?elemento2-derecha))
-;
-;   (test (> (length $?elemento1-izquierda) 0))
-;   (test (> (length $?elemento2-izquierda) 0))
-;   (test (> (length $?elemento1-derecha) 0))
-;   (test (> (length $?elemento2-derecha) 0))
-;
-;   ;El elemento a enviar se encuentra en la membrana emisora con configuracion actual y siguiente.
-;
-;   ;PARTE IZQUIERDA DE LA REGLA
-;   (or
-;     ;ENVIA DOS ELEMENTOS IGUALES
-;     (and (test (eq $?elemento1-izquierda $?elemento2-izquierda))
-;
-;          (membrana (etiqueta ?etiqueta-izquierda)
-;                    (identificador ?id-izquierda)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ?k&:(>= ?k 2) $?elemento1-izquierda , $?))
-;
-;          (membrana (etiqueta ?etiqueta-izquierda)
-;                    (identificador ?id-izquierda)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ?k $?elemento1-izquierda , $?)))
-;
-;     ;ENVIA DOS ELEMENTOS DISTINTOS
-;     (and (test (neq $?elemento1-izquierda $?elemento2-izquierda))
-;
-;          (membrana (etiqueta ?etiqueta-izquierda)
-;                    (identificador ?id-izquierda)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ? $?elemento1-izquierda , $?))
-;
-;          (membrana (etiqueta ?etiqueta-izquierda)
-;                    (identificador ?id-izquierda)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ? $?elemento1-izquierda , $?))
-;
-;
-;          (membrana (identificador ?id-izquierda)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ? $?elemento2-izquierda , $?))
-;
-;          (membrana (identificador ?id-izquierda)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ? $?elemento2-izquierda , $?))))
-;
-;
-;   ;PARTE DERECHA DE LA REGLA
-;   (or
-;     ;ENVIA DOS ELEMENTOS IGUALES
-;     (and (test (eq $?elemento1-derecha $?elemento2-derecha))
-;
-;          (membrana (etiqueta ?etiqueta-derecha)
-;                    (identificador ?id-derecha)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ?k&:(>= ?k 2) $?elemento1-derecha , $?))
-;
-;          (membrana (identificador ?id-derecha)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ?k $?elemento1-derecha , $?)))
-;
-;     ;ENVIA DOS ELEMENTOS DISTINTOS
-;     (and (test (neq $?elemento1-derecha $?elemento2-derecha))
-;
-;          (membrana (identificador ?id-derecha)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ? $?elemento1-derecha , $?))
-;
-;          (membrana (identificador ?id-derecha)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ? $?elemento1-derecha , $?))
-;
-;
-;          (membrana (identificador ?id-derecha)
-;                    (configuracion ?pactual)
-;                    (contenido $? , ? $?elemento2-derecha , $?))
-;
-;          (membrana (identificador ?id-derecha)
-;                    (configuracion ?psiguiente)
-;                    (contenido $? , ? $?elemento2-derecha , $?))))
-;
-;   =>
-;   ;Incluye en la memoria de trabajo el/los hecho/s para llevar a cabo el envio de los elementos entre membranas.
-;
-;   ;PARTE IZQUIERDA DE LA REGLA
-;   (if (eq $?elemento1-izquierda $elemento2-izquierda)
-;
-;     ;ENVIA DOS ELEMENTOS IGUALES
-;     then (assert (envia-elemento (identificador-emisor ?id-izquierda)
-;                                  (identificador-receptor ?id-derecha)
-;                                  (elemento-enviado 2 $?elemento1-izquierda)))
-;
-;     ;ENVIA DOS ELEMENTOS DISTINTOS
-;     else (assert (envia-elemento (identificador-emisor ?id-izquierda)
-;                                  (identificador-receptor ?id-derecha)
-;                                  (elemento-enviado 1 $?elemento1-izquierda))
-;
-;                  (envia-elemento (identificador-emisor ?id-izquierda)
-;                                  (identificador-receptor ?id-derecha)
-;                                  (elemento-enviado 1 $?elemento2-izquierda))))
-;
-;   ;PARTE DERECHA DE LA REGLA
-;   (if (eq $?elemento1-derecha $?elemento2-derecha)
-;
-;     ;ENVIA DOS ELEMENTOS IGUALES
-;     then (assert (envia-elemento (identificador-emisor ?id-derecha)
-;                                  (identificador-receptor ?id-izquierda)
-;                                  (elemento-enviado 2 $?elemento1-derecha)))
-;
-;     ;ENVIA DOS ELEMENTOS DISTINTOS
-;     else (assert (envia-elemento (identificador-emisor ?id-derecha)
-;                                  (identificador-receptor ?id-izquierda)
-;                                  (elemento-enviado 1 $?elemento1-derecha))
-;
-;                  (envia-elemento (identificador-emisor ?id-derecha)
-;                                  (identificador-receptor ?id-izquierda)
-;                                  (elemento-enviado 1 $?elemento2-derecha))))
-;
-; )
-;
-; ;Antes de aplicar alguna otra regla nueva, ya sea de comunicacion o division, hay que realizar los envios pendientes
-; ; de la regla de comunicacion recien disparada y que ha generado la activacion de esta regla.
-;
-; (defrule realiza-envio "envia, de una membrana a otra, los elementos determinados por una regla de comunicacion concreta"
-;   (declare (salience 96))
-;
-;   (estado transicion)
-;
-;   (paso-actual ?pactual)
-;   (paso-siguiente ?psiguiente)
-;
-;   ?envio <- (envia-elemento (identificador-emisor ?id-emisor)
-;                             (identificador-receptor ?id-receptor)
-;                             (elemento-enviado ?copias $?elemento))
-;
-;   ?emisora-actual  <- (membrana (identificador ?id-emisor)
-;                                 (configuracion ?pactual)
-;                                 (contenido $?cea))
-;
-;   ?emisora-siguiente  <- (membrana (identificador ?id-emisor)
-;                                    (configuracion ?psiguiente)
-;                                    (contenido $?ces))
-;
-;   ?receptora <- (membrana (identificador ?id-receptor)
-;                           (configuracion ?psiguiente)
-;                           (contenido $?cr))
-;
-;   =>
-;   (retract ?envio)
-;
-;   ;Elimina elementos de la membrana emisora
-;   (bind ?contenido-emisora-actual    (elimina-elementos $?cea ?copias $?elemento))
-;   (bind ?contenido-emisora-siguiente (elimina-elementos $?ces ?copias $?elemento))
-;
-;   (modify ?emisora-actual   (contenido ?contenido-emisora-actual))
-;   (modify ?emisora-siguiente (contenido ?contenido-emisora-siguiente))
-;
-;   ;Incluye elementos en la membrana receptora
-;   (bind ?contenido-receptora (agrega-elementos $?cr ?copias $?elemento))
-;
-;   (modify ?receptora (contenido ?contenido-receptora))
-;
-; )
+(defrule finaliza-transicion "comprueba si queda alguna regla de comunicacion por aplicar en la configuracion actual"
 
-; (defrule finaliza-transicion "comprueba si queda alguna regla de comunicacion por aplicar en la configuracion actual"
-;
-;   ?estado <- (estado transicion)
-;
-;   (paso-actual ?pactual)
-;
-;   ;Comprueba que no queda ninguna regla de comunicacion que se pueda aplicar.
-;   (not
-;     (and
-;       (regla-comunicacion (etiqueta-izquierda ?etiqueta-izquierda)
-;                           (elemento1-izquierda $?elemento1-izquierda) ;Siempre hay un valor
-;                           (elemento2-izquierda $?elemento2-izquierda) ;Puede ser vacio
-;                           (etiqueta-derecha ?etiqueta-derecha)
-;                           (elemento1-derecha $?elemento1-derecha)     ;Puede ser vacio
-;                           (elemento2-derecha $?elemento2-derecha))    ;Puede ser vacio
-;
-;       (or ;PARTE IZQUIERDA DE LA REGLA.
-;           ;La membrana especificada en la parte izquierda de la regla envia 1 elemento. (Antiport)
-;           (and (test (= (length $?elemento2-izquierda) 0))
-;
-;                (membrana (etiqueta ?etiqueta-izquierda)
-;                          (configuracion ?pactual)
-;                          (contenido $?, $?elemento1-izquierda , $?)))
-;
-;           ;La membrana especificada en la parte izquierda de la regla envia 2 elementos. (Antiport)
-;           (and (test (<> (length $?elemento2-izquierda) 0))
-;               (membrana (etiqueta ?etiqueta-izquierda)
-;                          (identificador ?id-izquierda)
-;                          (configuracion ?pactual)
-;                          (contenido $?cii1 , $?elemento1-izquierda , $?cii2))
-;
-;                (membrana (etiqueta ?etiqueta-izquierda)
-;                          (identificador ?id-izquierda)
-;                          (configuracion ?pactual)
-;                          (contenido $?cif1 , $?elemento2-izquierda , $?cif2))
-;
-;                          (test (neq $?cii1 $?cii2))
-;                          (test (neq $?cif1 $?cif2))))
-;
-;       (or ;PARTE DERECHA DE LA REGLA.
-;           ;Se trata de una comunicacion con el entorno.
-;           (and
-;             (test (= ?etiqueta-derecha 0))
-;
-;             (membrana (etiqueta 0)
-;                       (configuracion ?pactual)))
-;
-;           ;La membrana especificada en la parte derecha de la regla no envia ningun elemento. (Symport)
-;           (and
-;             (test (= (length $?elemento1-derecha) 0)) ; Si el elemento 1 es vacio el segundo tambien lo es.
-;
-;             (membrana (etiqueta ?etiqueta-derecha)
-;                       (configuracion ?pactual)))
-;
-;           (and ;La membrana especificada en la parte derecha de la regla envia 1 elemento. (Antiport)
-;             (test (<> ?etiqueta-derecha 0))
-;             (test (<> (length $?elemento1-derecha) 0))
-;             (test (= (length $?elemento2-derecha) 0))
-;
-;             (membrana (etiqueta ?etiqueta-derecha)
-;                       (configuracion ?pactual)
-;                       (contenido $? , $?elemento1-derecha , $?)))
-;
-;           (and ;La membrana especificada en la parte derecha de la regla envia 2 elementos. (Antiport)
-;             (test (<> ?etiqueta-derecha 0))
-;             (test (<> (length $?elemento1-derecha) 0))
-;             (test (<> (length $?elemento2-derecha) 0))
-;
-;             (membrana (etiqueta ?etiqueta-derecha)
-;                       (identificador ?id-derecha)
-;                       (configuracion ?pactual)
-;                       (contenido $?cdi1 , $?elemento1-derecha , $?cdf1))
-;
-;             (membrana (etiqueta ?etiqueta-derecha)
-;                       (identificador ?id-derecha)
-;                       (configuracion ?pactual)
-;                       (contenido $?cdi2 , $?elemento2-derecha , $?cdf2))
-;
-;             ;Comprueba que no selecciona el mismo elemento 2 veces en caso de que sean iguales.
-;             (test (neq $?cdi1 $?cdi2))
-;             (test (neq $?cdf1 $?cdf2))))))
-;
-;     =>
-;     (retract ?estado)
-;     (assert (estado actualizacion))
-;
-; )
+  ?estado <- (estado transicion)
+
+  (paso-actual ?pactual)
+
+  ;Comprueba que no queda ninguna regla de comunicacion que se pueda aplicar.
+  (not
+    (and
+      (regla-comunicacion (etiqueta-izquierda ?etiqueta-izquierda)
+                          (elemento1-izquierda $?elemento1-izquierda)
+                          (elemento2-izquierda $?elemento2-izquierda)
+                          (etiqueta-derecha ?etiqueta-derecha)
+                          (elemento1-derecha $?elemento1-derecha)
+                          (elemento2-derecha $?elemento2-derecha))
+
+      ;PARTE IZQUIERDA DE LA REGLA
+      (membrana (etiqueta ?etiqueta-izquierda)
+                (identificador ?id-izquierda)
+                (configuracion ?pactual)
+                (contenido $?ca-izquierda))
+
+      (membrana (etiqueta ?etiqueta-izquierda)
+                (identificador ?id-izquierda)
+                (configuracion ?psiguiente)
+                (contenido $?cs-izquierda))
+
+      (or ;ENVIA DOS ELEMENTOS IGUALES
+       (and (test (eq $?elemento1-izquierda $?elemento2-izquierda))
+            (test (existe-elemento $?ca-izquierda 2 $?elemento1-izquierda))
+            (test (existe-elemento $?cs-izquierda 2 $?elemento1-izquierda)))
+
+          ;ENVIA DOS ELEMENTOS DISTINTOS
+       (and (test (neq $?elemento1-izquierda $?elemento2-izquierda))
+            (test (existe-elemento $?ca-izquierda 1 $?elemento1-izquierda))
+            (test (existe-elemento $?cs-izquierda 1 $?elemento1-izquierda))
+            (test (existe-elemento $?ca-izquierda 1 $?elemento2-izquierda))
+            (test (existe-elemento $?cs-izquierda 1 $?elemento2-izquierda))))
+
+
+      ;PARTE DERECHA DE LA REGLA
+      (membrana (etiqueta ?etiqueta-derecha)
+                              (identificador ?id-derecha)
+                              (configuracion ?pactual)
+                              (contenido $?ca-derecha))
+
+      (membrana (etiqueta ?etiqueta-derecha)
+                (identificador ?id-derecha)
+                (configuracion ?psiguiente)
+                (contenido $?cs-derecha))
+
+      (or ;ENVIA DOS ELEMENTOS IGUALES
+       (and (test (eq $?elemento1-derecha $?elemento2-derecha))
+            (test (existe-elemento $?ca-derecha 2 $?elemento1-derecha))
+            (test (existe-elemento $?cs-derecha 2 $?elemento1-derecha)))
+
+         ;ENVIA DOS ELEMENTOS DISTINTOS
+       (and (test (neq $?elemento1-derecha $?elemento2-derecha))
+            (test (existe-elemento $?ca-derecha 1 $?elemento1-derecha))
+            (test (existe-elemento $?cs-derecha 1 $?elemento1-derecha))
+            (test (existe-elemento $?ca-derecha 1 $?elemento2-derecha))
+            (test (existe-elemento $?cs-derecha 1 $?elemento2-derecha))))))
+
+  =>
+  (retract ?estado)
+  (assert (estado actualizacion))
+
+)
 
 
 (defrule sincronizacion-actualizacion-1 "elimina las membranas con el indice de la configuracion actual"
