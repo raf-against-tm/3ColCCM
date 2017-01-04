@@ -227,15 +227,9 @@
 
   ;ESTRUCTURA DE MEMBRANAS
 
-  ;(bind ?copias (integer (** 3 ?*n-vertices*))) ;Numero maximo de copias necesarias para determinados elementos en el entorno.
-
   (assert
     ;La membrana 0 representa al entorno (salida) y requiere ser inicializada con los elementos que codifican una instancia
     ; del problema 3-COL. Ademas contiene el resto de elementos necesarios para el sistema. [0 - {yes, no}]
-    ; (membrana (etiqueta 0)
-    ;           (identificador 0)
-    ;           (contenido , 1 b , 1 D , ?copias E , ?copias e , ?copias t , 1 S , 1 N , ?copias z ,))
-
     (membrana (etiqueta 0)
               (identificador 0)
               (contenido , b , D , E , e , t , S , N , z ,))
@@ -343,9 +337,6 @@
   =>
   (retract ?iv)
 
-  ;(bind ?k (integer (** 3 ?*n-vertices*))) ;COPIAS EN EL ENTORNO
-
-  ;(modify ?entorno (contenido $?c0 ?k A ?i , ?k R ?i , ?k T ?i , ?k B ?i , ?k G ?i , ?k RC ?i , ?k BC ?i , ?k GC ?i ,))
   (modify ?entorno (contenido $?c0 A ?i , R ?i , T ?i , B ?i , G ?i , RC ?i , BC ?i , GC ?i ,))
   (modify ?entrada (contenido $?c2 1 A ?i ,))
 
@@ -404,9 +395,6 @@
   =>
   (retract ?ia)
 
-  ;(bind ?k (integer (** 3 ?*n-vertices*))) ;COPIAS EN EL ENTORNO
-
-  ;(modify ?entorno (contenido $?c0 ?k P ?i ?j , ?k PC ?i ?j , ?k R ?i ?j , ?k B ?i ?j , ?k G ?i ?j ,))
   (modify ?entorno (contenido $?c0 P ?i ?j , PC ?i ?j , R ?i ?j , B ?i ?j , G ?i ?j ,))
   (modify ?entrada (contenido $?c2 1 A ?i ?j ,))
 
@@ -475,7 +463,6 @@
   (switch ?tipo
       (case a ;1 ... 2n + [log2(m)] + 12
         then (bind ?indice-a 1)
-             ;(bind ?contadores (create$ 1 ?tipo ?indice-a ,))
              (bind ?contadores (create$ ?tipo ?indice-a ,))
              (bind ?limite-a (+ (*  2 ?*n-vertices*) ?*techo-log2-m* 12))
 
@@ -490,14 +477,11 @@
                                             (elemento1-derecha a (+ ?indice-a 1))))
 
                 (bind ?indice-a (+ ?indice-a 1))
-                ;(bind ?contadores (insert$ ?contadores 1 1 ?tipo ?indice-a ,))))
                 (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-a ,))))
 
       (case c ;1 ... 2n + 1
         then (bind ?indice-c 1)
-             ;(bind ?contadores (create$ 1 ?tipo ?indice-c ,))
              (bind ?contadores (create$ ?tipo ?indice-c ,))
-             ;(bind ?copias 2) ;Copias necesarias del contador con el indice siguiente.
              (bind ?limite-c (+ (* 2 ?*n-vertices*) 1))
              (while (< ?indice-c ?limite-c)
 
@@ -510,14 +494,10 @@
                                             (elemento2-derecha c (+ ?indice-c 1))))
 
                 (bind ?indice-c (+ ?indice-c 1))
-                ; (bind ?contadores (insert$ ?contadores 1 ?copias ?tipo ?indice-c ,))
-                ; (bind ?copias (* ?copias 2))))
                 (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-c ,))))
 
       (case d ;1 ... [log2(m)] + 1
         then (bind ?indice-d 1)
-             ;(bind ?copias (integer (** 3 ?*n-vertices*)))
-             ;(bind ?contadores (create$ ?copias ?tipo ?indice-d ,))
              (bind ?contadores (create$ ?tipo ?indice-d ,))
              (bind ?limite-d (+ ?*techo-log2-m* 1))
              (while (< ?indice-d ?limite-d)
@@ -531,14 +511,10 @@
                                             (elemento2-derecha d (+ ?indice-d 1))))
 
                 (bind ?indice-d (+ ?indice-d 1))
-                ; (bind ?copias (* ?copias 2))
-                ; (bind ?contadores (insert$ ?contadores 1 ?copias ?tipo ?indice-d ,))))
                 (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-d ,))))
 
       (case f ;2 ... [log2(m)] + 7
         then (bind ?indice-f 2)
-             ;(bind ?copias (integer (** 3 ?*n-vertices*)))
-             ;(bind ?contadores (create$ ?copias ?tipo ?indice-f ,))
              (bind ?contadores (create$ ?tipo ?indice-f ,))
              (bind ?limite-f (+ ?*techo-log2-m* 7))
              (while (< ?indice-f ?limite-f)
@@ -551,7 +527,6 @@
                                            (elemento1-derecha f (+ ?indice-f 1))))
 
                 (bind ?indice-f (+ ?indice-f 1))
-                ;(bind ?contadores (insert$ ?contadores 1 ?copias ?tipo ?indice-f ,)))))
                 (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-f ,)))))
 
   (modify ?entorno (contenido $?c0 ?contadores))
@@ -699,10 +674,6 @@
   (not (membrana (configuracion ?pactual)))
 
   ;El sistema no se encuenta en la configuracion de parada.
-  ; (not (membrana (etiqueta 0)
-  ;                (configuracion ?psiguiente)
-  ;                (contenido $? , ? yes|no , $?)))
-
   (not (membrana (etiqueta 0)
                  (configuracion ?psiguiente)
                  (contenido $? , yes|no , $?)))
@@ -751,10 +722,6 @@
   (paso-siguiente ?psiguiente)
 
   (not (membrana (configuracion ?pactual)))
-
-  ; (membrana (etiqueta 0)
-  ;           (configuracion ?psiguiente)
-  ;           (contenido $? , ? yes|no , $?))
 
   (membrana (etiqueta 0)
             (configuracion ?psiguiente)
