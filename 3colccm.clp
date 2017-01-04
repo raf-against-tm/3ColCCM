@@ -120,15 +120,15 @@
 ;                   (m-aristas 3) (aristas , A 1 2 , A 1 3 , A 2 3 ,))
 ; )
 
-(deffacts ejemplo2-instancia-3-col "datos de ejemplo de un problema 3-COL" ;No existe solucion 3-COL.
-  (instancia-3col (n-vertices 4) (vertices , A 1 , A 2 , A 3 , A 4 ,)
-                  (m-aristas 6) (aristas , A 1 2 , A 1 3 , A 1 4 , A 2 3 , A 2 4 , A 3 4 ,))
-)
-
-; (deffacts ejemplo3-instancia-3-col "datos de ejemplo de un problema 3-COL" ;Existe solucion 2-COL
+; (deffacts ejemplo2-instancia-3-col "datos de ejemplo de un problema 3-COL" ;No existe solucion 3-COL.
 ;   (instancia-3col (n-vertices 4) (vertices , A 1 , A 2 , A 3 , A 4 ,)
-;                   (m-aristas 3) (aristas , A 1 2 , A 1 3 , A 1 4 ,))
+;                   (m-aristas 6) (aristas , A 1 2 , A 1 3 , A 1 4 , A 2 3 , A 2 4 , A 3 4 ,))
 ; )
+
+(deffacts ejemplo3-instancia-3-col "datos de ejemplo de un problema 3-COL" ;Existe solucion 2-COL
+  (instancia-3col (n-vertices 4) (vertices , A 1 , A 2 , A 3 , A 4 ,)
+                  (m-aristas 3) (aristas , A 1 2 , A 1 3 , A 1 4 ,))
+)
 
 ;VARIABLES GLOBALES
 (defglobal ?*n-vertices*   = 0  ;Numero de vertices que codifican las distintas regiones del mapa.
@@ -227,14 +227,18 @@
 
   ;ESTRUCTURA DE MEMBRANAS
 
-  (bind ?copias (integer (** 3 ?*n-vertices*))) ;Numero maximo de copias necesarias para determinados elementos en el entorno.
+  ;(bind ?copias (integer (** 3 ?*n-vertices*))) ;Numero maximo de copias necesarias para determinados elementos en el entorno.
 
   (assert
     ;La membrana 0 representa al entorno (salida) y requiere ser inicializada con los elementos que codifican una instancia
     ; del problema 3-COL. Ademas contiene el resto de elementos necesarios para el sistema. [0 - {yes, no}]
+    ; (membrana (etiqueta 0)
+    ;           (identificador 0)
+    ;           (contenido , 1 b , 1 D , ?copias E , ?copias e , ?copias t , 1 S , 1 N , ?copias z ,))
+
     (membrana (etiqueta 0)
               (identificador 0)
-              (contenido , 1 b , 1 D , ?copias E , ?copias e , ?copias t , 1 S , 1 N , ?copias z ,))
+              (contenido , b , D , E , e , t , S , N , z ,))
 
     (membrana (etiqueta 1) ;El estado inicial de la membrana 1 es igual para cualquier instancia del problema.
               (identificador 1)
@@ -339,9 +343,10 @@
   =>
   (retract ?iv)
 
-  (bind ?k (integer (** 3 ?*n-vertices*))) ;COPIAS EN EL ENTORNO
+  ;(bind ?k (integer (** 3 ?*n-vertices*))) ;COPIAS EN EL ENTORNO
 
-  (modify ?entorno (contenido $?c0 ?k A ?i , ?k R ?i , ?k T ?i , ?k B ?i , ?k G ?i , ?k RC ?i , ?k BC ?i , ?k GC ?i ,))
+  ;(modify ?entorno (contenido $?c0 ?k A ?i , ?k R ?i , ?k T ?i , ?k B ?i , ?k G ?i , ?k RC ?i , ?k BC ?i , ?k GC ?i ,))
+  (modify ?entorno (contenido $?c0 A ?i , R ?i , T ?i , B ?i , G ?i , RC ?i , BC ?i , GC ?i ,))
   (modify ?entrada (contenido $?c2 1 A ?i ,))
 
   ;Reglas asociadas a los vertices.
@@ -399,9 +404,10 @@
   =>
   (retract ?ia)
 
-  (bind ?k (integer (** 3 ?*n-vertices*))) ;COPIAS EN EL ENTORNO
+  ;(bind ?k (integer (** 3 ?*n-vertices*))) ;COPIAS EN EL ENTORNO
 
-  (modify ?entorno (contenido $?c0 ?k P ?i ?j , ?k PC ?i ?j , ?k R ?i ?j , ?k B ?i ?j , ?k G ?i ?j ,))
+  ;(modify ?entorno (contenido $?c0 ?k P ?i ?j , ?k PC ?i ?j , ?k R ?i ?j , ?k B ?i ?j , ?k G ?i ?j ,))
+  (modify ?entorno (contenido $?c0 P ?i ?j , PC ?i ?j , R ?i ?j , B ?i ?j , G ?i ?j ,))
   (modify ?entrada (contenido $?c2 1 A ?i ?j ,))
 
   ;Reglas asociadas a las aristas.
@@ -469,7 +475,8 @@
   (switch ?tipo
       (case a ;1 ... 2n + [log2(m)] + 12
         then (bind ?indice-a 1)
-             (bind ?contadores (create$ 1 ?tipo ?indice-a ,))
+             ;(bind ?contadores (create$ 1 ?tipo ?indice-a ,))
+             (bind ?contadores (create$ ?tipo ?indice-a ,))
              (bind ?limite-a (+ (*  2 ?*n-vertices*) ?*techo-log2-m* 12))
 
              ;Genera la lista de elementos referentes al contador correspondiente.
@@ -483,12 +490,14 @@
                                             (elemento1-derecha a (+ ?indice-a 1))))
 
                 (bind ?indice-a (+ ?indice-a 1))
-                (bind ?contadores (insert$ ?contadores 1 1 ?tipo ?indice-a ,))))
+                ;(bind ?contadores (insert$ ?contadores 1 1 ?tipo ?indice-a ,))))
+                (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-a ,))))
 
       (case c ;1 ... 2n + 1
         then (bind ?indice-c 1)
-             (bind ?contadores (create$ 1 ?tipo ?indice-c ,))
-             (bind ?copias 2) ;Copias necesarias del contador con el indice siguiente.
+             ;(bind ?contadores (create$ 1 ?tipo ?indice-c ,))
+             (bind ?contadores (create$ ?tipo ?indice-c ,))
+             ;(bind ?copias 2) ;Copias necesarias del contador con el indice siguiente.
              (bind ?limite-c (+ (* 2 ?*n-vertices*) 1))
              (while (< ?indice-c ?limite-c)
 
@@ -501,13 +510,15 @@
                                             (elemento2-derecha c (+ ?indice-c 1))))
 
                 (bind ?indice-c (+ ?indice-c 1))
-                (bind ?contadores (insert$ ?contadores 1 ?copias ?tipo ?indice-c ,))
-                (bind ?copias (* ?copias 2))))
+                ; (bind ?contadores (insert$ ?contadores 1 ?copias ?tipo ?indice-c ,))
+                ; (bind ?copias (* ?copias 2))))
+                (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-c ,))))
 
       (case d ;1 ... [log2(m)] + 1
         then (bind ?indice-d 1)
-             (bind ?copias (integer (** 3 ?*n-vertices*)))
-             (bind ?contadores (create$ ?copias ?tipo ?indice-d ,))
+             ;(bind ?copias (integer (** 3 ?*n-vertices*)))
+             ;(bind ?contadores (create$ ?copias ?tipo ?indice-d ,))
+             (bind ?contadores (create$ ?tipo ?indice-d ,))
              (bind ?limite-d (+ ?*techo-log2-m* 1))
              (while (< ?indice-d ?limite-d)
 
@@ -520,13 +531,15 @@
                                             (elemento2-derecha d (+ ?indice-d 1))))
 
                 (bind ?indice-d (+ ?indice-d 1))
-                (bind ?copias (* ?copias 2))
-                (bind ?contadores (insert$ ?contadores 1 ?copias ?tipo ?indice-d ,))))
+                ; (bind ?copias (* ?copias 2))
+                ; (bind ?contadores (insert$ ?contadores 1 ?copias ?tipo ?indice-d ,))))
+                (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-d ,))))
 
       (case f ;2 ... [log2(m)] + 7
         then (bind ?indice-f 2)
-             (bind ?copias (integer (** 3 ?*n-vertices*)))
-             (bind ?contadores (create$ ?copias ?tipo ?indice-f ,))
+             ;(bind ?copias (integer (** 3 ?*n-vertices*)))
+             ;(bind ?contadores (create$ ?copias ?tipo ?indice-f ,))
+             (bind ?contadores (create$ ?tipo ?indice-f ,))
              (bind ?limite-f (+ ?*techo-log2-m* 7))
              (while (< ?indice-f ?limite-f)
 
@@ -538,7 +551,8 @@
                                            (elemento1-derecha f (+ ?indice-f 1))))
 
                 (bind ?indice-f (+ ?indice-f 1))
-                (bind ?contadores (insert$ ?contadores 1 ?copias ?tipo ?indice-f ,)))))
+                ;(bind ?contadores (insert$ ?contadores 1 ?copias ?tipo ?indice-f ,)))))
+                (bind ?contadores (insert$ ?contadores 1 ?tipo ?indice-f ,)))))
 
   (modify ?entorno (contenido $?c0 ?contadores))
   (assert (contadores ?tipo)) ;Se han incluido todos los contadores del tipo indicado.
@@ -640,17 +654,23 @@
                 (configuracion ?psiguiente)
                 (contenido $?cs-derecha))
 
-      (or ;ENVIA DOS ELEMENTOS IGUALES
-       (and (test (eq $?elemento1-derecha $?elemento2-derecha))
-            (test (existe-elemento $?ca-derecha 2 $?elemento1-derecha))
-            (test (existe-elemento $?cs-derecha 2 $?elemento1-derecha)))
 
-         ;ENVIA DOS ELEMENTOS DISTINTOS
-       (and (test (neq $?elemento1-derecha $?elemento2-derecha))
-            (test (existe-elemento $?ca-derecha 1 $?elemento1-derecha))
-            (test (existe-elemento $?cs-derecha 1 $?elemento1-derecha))
-            (test (existe-elemento $?ca-derecha 1 $?elemento2-derecha))
-            (test (existe-elemento $?cs-derecha 1 $?elemento2-derecha))))))
+      (or
+        (test (= ?etiqueta-derecha 0)) ;Si se trata del entorno, este siempre tiene los elementos necesarios.
+
+        (and ;ENVIA DOS ELEMENTOS IGUALES
+          (test (<> ?etiqueta-derecha 0))
+          (test (eq $?elemento1-derecha $?elemento2-derecha))
+          (test (existe-elemento $?ca-derecha 2 $?elemento1-derecha))
+          (test (existe-elemento $?cs-derecha 2 $?elemento1-derecha)))
+
+        (and ;ENVIA DOS ELEMENTOS DISTINTOS
+          (test (<> ?etiqueta-derecha 0))
+          (test (neq $?elemento1-derecha $?elemento2-derecha))
+          (test (existe-elemento $?ca-derecha 1 $?elemento1-derecha))
+          (test (existe-elemento $?cs-derecha 1 $?elemento1-derecha))
+          (test (existe-elemento $?ca-derecha 1 $?elemento2-derecha))
+          (test (existe-elemento $?cs-derecha 1 $?elemento2-derecha))))))
 
   =>
   (retract ?estado)
@@ -671,7 +691,7 @@
 
 )
 
-(defrule inserta-copias-siguientes "inserta las copias necesarias para la siguiente paso"
+(defrule inserta-membranas-siguientes "inserta las copias de las membranas necesarias para la siguiente paso"
   (estado actualizacion)
   (paso-actual ?pactual)
   (paso-siguiente ?psiguiente)
@@ -679,9 +699,13 @@
   (not (membrana (configuracion ?pactual)))
 
   ;El sistema no se encuenta en la configuracion de parada.
+  ; (not (membrana (etiqueta 0)
+  ;                (configuracion ?psiguiente)
+  ;                (contenido $? , ? yes|no , $?)))
+
   (not (membrana (etiqueta 0)
                  (configuracion ?psiguiente)
-                 (contenido $? , ? yes|no , $?)))
+                 (contenido $? , yes|no , $?)))
 
 
   ?siguiente <- (membrana (etiqueta ?etiqueta)
@@ -728,9 +752,13 @@
 
   (not (membrana (configuracion ?pactual)))
 
+  ; (membrana (etiqueta 0)
+  ;           (configuracion ?psiguiente)
+  ;           (contenido $? , ? yes|no , $?))
+
   (membrana (etiqueta 0)
             (configuracion ?psiguiente)
-            (contenido $? , ? yes|no , $?))
+            (contenido $? , yes|no , $?))
 
   =>
   (retract ?estado)
@@ -864,50 +892,60 @@
 
   ;Comprueba si existen los elementos necesarios en la membrana especificada en la parte derecha de la regla
 
-  (or ;ENVIA DOS ELEMENTOS IGUALES
-    (test (= ?etiqueta-derecha 0)) ;Se trata del entorno. El entorno contiene siempre los elementos necesarios.
+  (or
+    (test (= ?etiqueta-derecha 0)) ;Si se trata del entorno, este siempre tiene los elementos necesarios.
 
-    (and (test (<> ?etiqueta-derecha 0))
-         (test (eq $?elemento1-derecha $?elemento2-derecha))
-         (test (existe-elemento $?ca-derecha 2 $?elemento1-derecha))
-         (test (existe-elemento $?cs-derecha 2 $?elemento1-derecha)))
+    (and ;ENVIA DOS ELEMENTOS IGUALES
+      (test (<> ?etiqueta-derecha 0))
+      (test (eq $?elemento1-derecha $?elemento2-derecha))
+      (test (existe-elemento $?ca-derecha 2 $?elemento1-derecha))
+      (test (existe-elemento $?cs-derecha 2 $?elemento1-derecha)))
 
-      ;ENVIA DOS ELEMENTOS DISTINTOS
-    (and (test (<> ?etiqueta-derecha 0))
-         (test (neq $?elemento1-derecha $?elemento2-derecha))
-         (test (existe-elemento $?ca-derecha 1 $?elemento1-derecha))
-         (test (existe-elemento $?cs-derecha 1 $?elemento1-derecha))
-         (test (existe-elemento $?ca-derecha 1 $?elemento2-derecha))
-         (test (existe-elemento $?cs-derecha 1 $?elemento2-derecha))))
+    (and ;ENVIA DOS ELEMENTOS DISTINTOS
+      (test (<> ?etiqueta-derecha 0))
+      (test (neq $?elemento1-derecha $?elemento2-derecha))
+      (test (existe-elemento $?ca-derecha 1 $?elemento1-derecha))
+      (test (existe-elemento $?cs-derecha 1 $?elemento1-derecha))
+      (test (existe-elemento $?ca-derecha 1 $?elemento2-derecha))
+      (test (existe-elemento $?cs-derecha 1 $?elemento2-derecha))))
 
   =>
+  (bind ?contenido-mi-actual $?ca-izquierda)
+  (bind ?contenido-mi-siguiente $?cs-izquierda)
+  (bind ?contenido-md-actual $?ca-derecha)
+  (bind ?contenido-md-siguiente $?cs-derecha)
 
   ;EMISION MEMBRANA IZQUIERDA
   (if (eq $?elemento1-izquierda $?elemento2-izquierda)
-    then (bind ?contenido-mi-actual    (elimina-elementos $?ca-izquierda 2 $?elemento1-izquierda))
-         (bind ?contenido-mi-siguiente (elimina-elementos $?cs-izquierda 2 $?elemento1-izquierda))
+    then (bind ?contenido-mi-actual    (elimina-elementos ?contenido-mi-actual 2 $?elemento1-izquierda))
+         (bind ?contenido-mi-siguiente (elimina-elementos ?contenido-mi-siguiente 2 $?elemento1-izquierda))
 
-         (bind ?contenido-md-siguiente (agrega-elementos $?cs-derecha 2 $?elemento1-izquierda))
+         (if (<> ?etiqueta-derecha 0)
+          then (bind ?contenido-md-siguiente (agrega-elementos ?contenido-md-siguiente 2 $?elemento1-izquierda)))
 
-    else (bind ?contenido-mi-actual    (elimina-elementos $?ca-izquierda 1 $?elemento1-izquierda))
+
+    else (bind ?contenido-mi-actual    (elimina-elementos ?contenido-mi-actual 1 $?elemento1-izquierda))
          (bind ?contenido-mi-actual    (elimina-elementos ?contenido-mi-actual 1 $?elemento2-izquierda))
-         (bind ?contenido-mi-siguiente (elimina-elementos $?cs-izquierda 1 $?elemento1-izquierda))
+         (bind ?contenido-mi-siguiente (elimina-elementos ?contenido-mi-siguiente 1 $?elemento1-izquierda))
          (bind ?contenido-mi-siguiente (elimina-elementos ?contenido-mi-siguiente 1 $?elemento2-izquierda))
 
-         (bind ?contenido-md-siguiente (agrega-elementos $?cs-derecha 1 $?elemento1-izquierda))
-         (bind ?contenido-md-siguiente (agrega-elementos ?contenido-md-siguiente 1 $?elemento2-izquierda)))
+         (if (<> ?etiqueta-derecha 0)
+          then (bind ?contenido-md-siguiente (agrega-elementos ?contenido-md-siguiente 1 $?elemento1-izquierda))
+               (bind ?contenido-md-siguiente (agrega-elementos ?contenido-md-siguiente 1 $?elemento2-izquierda))))
 
    ;EMISION MEMBRANA DERECHA
    (if (eq $?elemento1-derecha $?elemento2-derecha)
-     then (bind ?contenido-md-actual    (elimina-elementos $?ca-derecha 2 $?elemento1-derecha))
-          (bind ?contenido-md-siguiente (elimina-elementos ?contenido-md-siguiente 2 $?elemento1-derecha))
+     then (if (<> ?etiqueta-derecha 0)
+            then (bind ?contenido-md-actual    (elimina-elementos ?contenido-md-actual 2 $?elemento1-derecha))
+                 (bind ?contenido-md-siguiente (elimina-elementos ?contenido-md-siguiente 2 $?elemento1-derecha)))
 
           (bind ?contenido-mi-siguiente (agrega-elementos ?contenido-mi-siguiente 2 $?elemento2-derecha))
 
-     else (bind ?contenido-md-actual    (elimina-elementos $?ca-derecha 1 $?elemento1-derecha))
-          (bind ?contenido-md-actual    (elimina-elementos ?contenido-md-actual 1 $?elemento2-derecha))
-          (bind ?contenido-md-siguiente (elimina-elementos ?contenido-md-siguiente 1 $?elemento1-derecha))
-          (bind ?contenido-md-siguiente (elimina-elementos ?contenido-md-siguiente 1 $?elemento2-derecha))
+     else (if (<> ?etiqueta-derecha 0)
+            then (bind ?contenido-md-actual    (elimina-elementos ?contenido-md-actual 1 $?elemento1-derecha))
+                 (bind ?contenido-md-actual    (elimina-elementos ?contenido-md-actual 1 $?elemento2-derecha))
+                 (bind ?contenido-md-siguiente (elimina-elementos ?contenido-md-siguiente 1 $?elemento1-derecha))
+                 (bind ?contenido-md-siguiente (elimina-elementos ?contenido-md-siguiente 1 $?elemento2-derecha)))
 
           (bind ?contenido-mi-siguiente (agrega-elementos ?contenido-mi-siguiente 1 $?elemento1-derecha))
           (bind ?contenido-mi-siguiente (agrega-elementos ?contenido-mi-siguiente 1 $?elemento2-derecha)))
@@ -927,6 +965,6 @@
 
       ;Si se trata del entorno y el elemento a introducir es la respuesta, ha de incluirse en el mismo.
       else (if (or (member$ yes $?elemento2-izquierda) (member$ no $?elemento2-izquierda))
-             then (modify ?md-siguiente (contenido , 1 $?elemento2-izquierda $?cs-derecha))))
+             then (modify ?md-siguiente (contenido , $?elemento2-izquierda ?contenido-md-siguiente))))
 
 )
