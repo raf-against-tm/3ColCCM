@@ -102,34 +102,6 @@
 
 )
 
-;HECHOS INICIALES
-(deffacts estado-inicial-computacion "conjunto de hechos necesarios para controlar los pasos de la computacion"
-  (paso-actual 1)
-  (paso-siguiente 2)
-
-  ;Hecho que define el estado del sistema. Se usa para llevar a cabo la inicializacion del sistema,
-  ; la aplicacion de reglas en una transicion, la actualizacion de las estrucutras de datos para pasar de una
-  ; configuracion a otra y para gestionar la respuesta final de la computacion con respecto al problema inicial.
-  (estado inicializacion)
-
-)
-
-;INSTANCIAS DEL PROBLEMA 3-COL DE EJEMPLO
-; (deffacts ejemplo1-instancia-3-col "datos de ejemplo de un problema 3-COL" ;Existe solucion 3-COL.
-;   (instancia-3col (n-vertices 3) (vertices , A 1 , A 2 , A 3 ,)
-;                   (m-aristas 3) (aristas , A 1 2 , A 1 3 , A 2 3 ,))
-; )
-
-; (deffacts ejemplo2-instancia-3-col "datos de ejemplo de un problema 3-COL" ;No existe solucion 3-COL.
-;   (instancia-3col (n-vertices 4) (vertices , A 1 , A 2 , A 3 , A 4 ,)
-;                   (m-aristas 6) (aristas , A 1 2 , A 1 3 , A 1 4 , A 2 3 , A 2 4 , A 3 4 ,))
-; )
-
-(deffacts ejemplo3-instancia-3-col "datos de ejemplo de un problema 3-COL" ;Existe solucion 2-COL
-  (instancia-3col (n-vertices 4) (vertices , A 1 , A 2 , A 3 , A 4 ,)
-                  (m-aristas 3) (aristas , A 1 2 , A 1 3 , A 1 4 ,))
-)
-
 ;VARIABLES GLOBALES
 (defglobal ?*n-vertices*   = 0  ;Numero de vertices que codifican las distintas regiones del mapa.
            ?*m-aristas*    = 0  ;Numero de aristas que codifican las fronteras entre regiones del mapa.
@@ -207,14 +179,211 @@
 
 )
 
-;REGLAS (INICIALIZACION, CONTROL DE LA COMPUTACION, DIVISION y COMUNICACION)
+;REGLAS (INTERFAZ DE USUARIO, INICIALIZACION, CONTROL DE LA COMPUTACION, DIVISION y COMUNICACION)
+
+;INTERFAZ DE USUARIO
+(defrule seleccion-de-opciones "permite al usuario seleccionar que entrada desea para el proceso"
+
+  ?inicio <- (initial-fact)
+
+  =>
+  (retract ?inicio)
+
+  (printout t "--> ////////// SOLUCION PARA EL PROBLEMA 3-COL MEDIANTE COMPUTACION CELULAR A MODO TEJIDO //////////  " crlf crlf)
+
+  (printout t "--> Por favor indique una de las siguientes opciones introduciendo el valor correspondiente:" crlf crlf)
+  (printout t "    1: Ejemplo 1 - Mapa con 3 regiones contiguas entre si" crlf)
+  (printout t "       [Representado por un grafo de vertices A1, A2 y A3 con aristas A12, A13 y A23]" crlf crlf)
+  (printout t "    2: Ejemplo 2 - Mapa con 4 regiones contiguas entre si" crlf)
+  (printout t "       [Representado por un grafo de vertices A1, A2, A3 y A4 con aristas A12, A13, A14, A23, A24 y A34]" crlf crlf)
+  (printout t "    3: Ej.Manual - Introduce manualmente un ejemplo para resolverlo" crlf)
+  (printout t "       [Los datos introducidos se deben corresponder con el grafo que representa el problema]" crlf crlf)
+
+  (printout t "--> Indique la opcion escogida [1, 2 o 3]: ")
+  (bind ?opcion (read))
+
+  ;Validacion de la opcion escogida.
+  (while (and (neq ?opcion 1) (neq ?opcion 2) (neq ?opcion 3))
+    (printout t "--> Ha introducido un valor incorrecto, por favor vuelva a indicar la opcion [1, 2 o 3]: ")
+    (bind ?opcion (read)))
+
+  (printout t crlf)
+
+  ;Ejecucion de la opcion escogida.
+  (switch ?opcion
+
+    ;Ejemplo1: Existe solucion 3-COL.
+    (case 1 then
+      (assert (estado inicializacion)
+              (paso-actual 1)
+              (paso-siguiente 2)
+
+              (instancia-3col (n-vertices 3) (vertices , A 1 , A 2 , A 3 ,)
+                              (m-aristas 3) (aristas , A 1 2 , A 1 3 , A 2 3 ,))))
+
+    ;Ejemplo2: No existe solucion 3-COL.
+    (case 2 then
+      (assert (estado inicializacion)
+              (paso-actual 1)
+              (paso-siguiente 2)
+
+              (instancia-3col (n-vertices 4) (vertices , A 1 , A 2 , A 3 , A 4 ,)
+                              (m-aristas 6) (aristas , A 1 2 , A 1 3 , A 1 4 , A 2 3 , A 2 4 , A 3 4 ,))))
+
+    (case 3 then (assert (lee-numero-vertices-y-aristas))))
+
+
+)
+
+;Reglas que gestionan los datos a introducir por parte del usuario, si se ha escogido la opcion manual.
+(defrule lee-numero-vertices-y-aristas "se encarga de leer y validar los datos de entrada referentes al numero de vertices y aristas"
+
+  ?lnva <- (lee-numero-vertices-y-aristas)
+
+  =>
+  (retract ?lnva)
+
+  ;Vertices
+
+  ;Lectura
+  (printout t "--> Introduzca el numero de vertices: ")
+  (bind ?n-vertices (read))
+
+  ;Validacion
+  (while (or (not (numberp ?n-vertices)) (<= ?n-vertices 0))
+    (printout t "--> Debe introducir un numero valido: ")
+      (bind ?n-vertices (read)))
+
+  ;Aristas
+
+  ;Lectura
+  (printout t "--> Introduzca el numero de aristas: ")
+  (bind ?m-aristas (read))
+
+  ;Validacion
+  (while (or (not (numberp ?m-aristas)) (<= ?m-aristas 0))
+    (printout t "--> Debe introducir un numero valido: ")
+      (bind ?m-aristas (read)))
+
+  ;Resultado
+  (assert (numero-vertices-valido ?n-vertices)
+          (numero-aristas-valido ?m-aristas)
+          (lee-aristas)
+          (construye-lista-vertices))
+
+)
+
+(defrule construye-lista-vertices "crea la lista de vertices existentes a partir del numero de vertices introducido"
+
+  ?clc <- (construye-lista-vertices)
+  (numero-vertices-valido ?n-vertices)
+
+  =>
+  (retract ?clc)
+
+  ;Construye el conjunto de vertices
+  (bind ?i 1)
+  (bind ?vertices (create$ ,))
+  (while (<= ?i ?n-vertices)
+    (bind ?vertices (insert$ ?vertices 1 , A ?i))
+    (bind ?i (+ ?i 1)))
+
+  (assert (vertices-validos ?vertices))
+
+)
+
+(defrule lee-aristas "se encarga de leer el dato de entrada referente a las aristas"
+
+  ?la <- (lee-aristas)
+
+  =>
+  (retract ?la)
+
+  ;Aristas
+  (printout t crlf)
+  (printout t "--> A continuacion debe introducir las aristas siguiendo el formato especificado en el ejemplo:" crlf crlf)
+  (printout t "     [  Ejemplo: , A 1 2 , A 1 3 , A 2 3 , A 3 4 ,                                                ]" crlf)
+  (printout t "     [- Cada elemento en el ejemplo debe separarse por un espacio.                                ]" crlf)
+  (printout t "     [- Las aristas son determinadas por el simbolo A y sus indices denotan los vertices que unen.]" crlf)
+  (printout t "     [- Los indices i j deben cumplir la condicion 1 <= i < j <= numero de vertices.              ]" crlf)
+  (printout t "     [- Las comas deben incluirse, pues se usan a modo separador de cada arista.                  ]" crlf crlf)
+
+  (printout t "--> Introduzca las aristas del grafo siguiendo las instrucciones anteriores: ")
+  (bind ?aristas (explode$ (readline)))
+  (printout t crlf)
+
+  ;TODO Valida estructura de la lista de aristas
+  ;TODO Imprime reglas aplicadas
+
+  (assert (aristas-leidas ?aristas)
+          (aristas-validas ,))
+
+)
+
+(defrule valida-aristas-leidas "comprueba que las aristas introducidas manualmente son correctas"
+  ?al <- (aristas-leidas $?ai , ?s ?i ?j , $?af)
+  ?av <- (aristas-validas $?avs)
+  (numero-vertices-valido ?n-vertices)
+  (numero-aristas-valido ?m-aristas)
+
+  =>
+  (retract ?al ?av)
+
+  (bind ?valido TRUE)
+
+  ;Validacion para la condicion 1 <= i < j <= numero de vertices.
+  (if (or (<= ?i 0) (>= ?i ?j) (>= ?i ?n-vertices))
+    then (printout t "No se cumple la condicion 1 <= i < j <= numero de vertices para" ?s ?i ?j crlf)
+         (bind ?valido FALSE))
+
+  ;Validacion del simbolo que denota a una arista.
+  (if (neq ?s A)
+    then (printout t "El simbolo de la arista" ?s ?i ?j "no es correcto" crlf)
+         (bind ?valido FALSE))
+
+  ;Validacion de aristas repetidas.
+  (if (member$ (create$ ?s ?i ?j) $?avs)
+    then (printout t "La arista" ?s ?i ?j "ha sido introducida mas de una vez" crlf)
+         (bind ?valido FALSE))
+
+  ;TODO Validar numero de aristas
+
+  (if ?valido
+    then (assert (aristas-leidas $?ai , $?af)
+                 (aristas-validas $?avs ?s ?i ?j ,))
+
+    else (assert (lee-aristas)))
+
+)
+
+(defrule construye-instancia-3-col "genera la estructura completa que necesita el sistema para comenzar"
+  ?nv <- (numero-vertices-valido ?n)
+  ?ma <- (numero-aristas-valido ?m)
+  ?al <- (aristas-leidas ,)
+  ?av <- (aristas-validas $?avs)
+  ?vv <- (vertices-validos $?vvs)
+
+  =>
+  (retract ?nv ?ma ?al ?av ?vv)
+
+  (assert (estado inicializacion)
+          (paso-actual 1)
+          (paso-siguiente 2))
+
+  (assert (instancia-3col (n-vertices ?n) (vertices $?vvs)
+                          (m-aristas ?m) (aristas $?avs)))
+
+)
+
 ;INICIALIZACION
-(defrule lee-instancia-3-col "a partir de los datos de entrada genera los hechos necesarios para inicializar el sistema"
+(defrule inicializa-sistema "a partir de los datos de entrada genera los hechos necesarios para inicializar el sistema"
 
   ?entrada <- (instancia-3col (n-vertices ?n-vertices) (vertices $?vertices)
                               (m-aristas ?m-aristas) (aristas $?aristas))
   =>
   (retract ?entrada)
+
+  (printout t "--> INICIALIZANDO SISTEMA A PARTIR DE LOS DATOS DE ENTRADA ..." crlf crlf)
 
   ;DATOS DE INICIALIZACION
 
@@ -558,6 +727,21 @@
 
   =>
   (retract ?estado ?vertices ?contadores-a ?contadores-c ?contadores-d ?contadores-f ?aristas)
+
+  (printout t "--> COMIENZA LA COMPUTACION ..." crlf crlf)
+
+
+  (printout t "  [NOTA: En el entorno se suponen un numero suficiente de copias de cada elemento para realizar el proceso    ]" crlf)
+  (printout t "  [       Por tanto su contenido no es alterado hasta que se introduzca en el la respuesta final. En el resto ]" crlf)
+  (printout t "  [       de membranas cada elemento lleva un numero delante que indica el numero de copias del mismo en la   ]" crlf)
+  (printout t "  [       configuracion correspondiente.                                                                      ]" crlf crlf)
+
+
+  (printout t "   CONFIGURACION INICIAL:" crlf)
+  (printout t "   Entorno " $?c0  crlf)
+  (printout t "   M1.1 " $?c1 crlf) ;Membrana 1 con identificador 1.
+  (printout t "   Entrada " $?c2 crlf crlf)
+
   (assert (estado transicion))
 
   ;Incluye copias de las membranas 0, 1 y 2 con el indice de la configuracion siguiente.
@@ -583,6 +767,7 @@
   ?estado <- (estado transicion)
 
   (paso-actual ?pactual)
+  (paso-siguiente ?psiguiente)
 
   ;Comprueba que no queda ninguna regla de comunicacion que se pueda aplicar.
 
@@ -663,6 +848,79 @@
 
   =>
   (retract ?actual)
+  (assert (imprime-membrana ?id))
+
+)
+
+(defrule imprime-entorno
+  (declare (salience 99))
+
+  (estado actualizacion)
+
+  (paso-actual ?pactual)
+  (paso-siguiente ?psiguiente)
+
+  (not (membrana (configuracion ?pactual)))
+
+  ?imprime <- (imprime-membrana 0)
+
+  ?entorno <- (membrana (etiqueta 0)
+                        (identificador 0)
+                        (configuracion ?psiguiente)
+                        (contenido $?c))
+
+  =>
+  (retract ?imprime)
+
+  (printout t "   CONFIGURACION " ?psiguiente ":" crlf)
+  (printout t "   Entorno " $?c  crlf)
+
+)
+
+(defrule imprime-membrana-1
+  (declare (salience 98))
+
+  (estado actualizacion)
+
+  (paso-actual ?pactual)
+  (paso-siguiente ?psiguiente)
+
+  (not (membrana (configuracion ?pactual)))
+
+  ?imprime <- (imprime-membrana 1)
+
+  ?membrana1 <- (membrana (etiqueta 1)
+                          (identificador 1)
+                          (configuracion ?psiguiente)
+                          (contenido $?c))
+
+  =>
+  (retract ?imprime)
+  (printout t "   M1.1 " $?c  crlf)
+
+)
+
+(defrule imprime-membrana-2
+  (declare (salience 97))
+
+  (estado actualizacion)
+
+  (paso-actual ?pactual)
+  (paso-siguiente ?psiguiente)
+
+  (not (membrana (configuracion ?pactual)))
+
+  ?imprime <- (imprime-membrana ?id&~0&~1)
+
+  ?membrana <- (membrana (etiqueta ?etiqueta&~0&~1)
+                         (identificador ?id)
+                         (configuracion ?psiguiente)
+                         (contenido $?c))
+
+  =>
+  (retract ?imprime)
+
+  (printout t "   M2." ?id " " $?c  crlf)
 
 )
 
@@ -672,6 +930,7 @@
   (paso-siguiente ?psiguiente)
 
   (not (membrana (configuracion ?pactual)))
+  (not (imprime-membrana ?))
 
   ;El sistema no se encuenta en la configuracion de parada.
   (not (membrana (etiqueta 0)
@@ -712,6 +971,8 @@
   (assert (paso-actual ?psiguiente)
           (paso-siguiente (+ ?psiguiente 1)))
 
+  (printout t crlf)
+
 )
 
 (defrule finaliza-computacion "termina la computacion si se ha llegado a una configuracion de parada"
@@ -725,11 +986,17 @@
 
   (membrana (etiqueta 0)
             (configuracion ?psiguiente)
-            (contenido $? , yes|no , $?))
+            (contenido $? , ?res&yes|no , $?))
 
   =>
   (retract ?estado)
   (assert (estado respuesta))
+
+  (printout t crlf)
+
+  (if (eq ?res yes)
+    then (printout t "--> LA INSTANCIA DEL PROBLEMA 3-COL INDICADADA SI PUEDE SER COLOREADA CON 3 COLORES" crlf crlf)
+    else (printout t "--> LA INSTANCIA DEL PROBLEMA 3-COL INDICADADA NO PUEDE SER COLOREADA CON 3 COLORES" crlf crlf))
 
 )
 
@@ -790,10 +1057,17 @@
     else (assert (membrana (etiqueta ?etiqueta)
                            (identificador (+ ?*id* 2))
                            (configuracion ?psiguiente)
+
                            (contenido $?ci , ?*n-vertices* $?elemento2-derecha , $?cf))))
+
+  ;Hechos para imprimir las membranas al finalizar la transicion entre configuraciones.
+  (assert (imprime-membrana (+ ?*id* 1))
+          (imprime-membrana (+ ?*id* 2)))
 
   ;Incrementa el valor referencia del identificador de membranas.
   (bind ?*id* (+ ?*id* 2))
+
+
 
 )
 
