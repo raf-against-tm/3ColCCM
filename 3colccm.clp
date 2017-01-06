@@ -266,17 +266,18 @@
       (bind ?m-aristas (read)))
 
   ;Resultado
-  (assert (numero-vertices-valido ?n-vertices)
-          (numero-aristas-valido ?m-aristas)
-          (lee-aristas)
-          (construye-lista-vertices))
+  (assert (numero-vertices ?n-vertices)
+          (numero-aristas ?m-aristas)
+          (construye-lista-vertices)
+          (lee-aristas ?m-aristas))
 
 )
 
 (defrule construye-lista-vertices "crea la lista de vertices existentes a partir del numero de vertices introducido"
 
   ?clc <- (construye-lista-vertices)
-  (numero-vertices-valido ?n-vertices)
+
+  (numero-vertices ?n-vertices)
 
   =>
   (retract ?clc)
@@ -292,9 +293,9 @@
 
 )
 
-(defrule lee-aristas "se encarga de leer el dato de entrada referente a las aristas"
+(defrule lee-aristas "se encarga de leer la lista de aristas de entrada indicadas por el usuario y valida su estructura"
 
-  ?la <- (lee-aristas)
+  ?la <- (lee-aristas ?m-aristas)
 
   =>
   (retract ?la)
@@ -310,57 +311,97 @@
 
   (printout t "--> Introduzca las aristas del grafo siguiendo las instrucciones anteriores: ")
   (bind ?aristas (explode$ (readline)))
+
+  (bind ?longitud (length ?aristas))
+  (while (< ?longitud 5)
+    (printout t "--> Debe introducir al menos una arista segun las instrucciones anteriores: ")
+    (bind ?aristas (explode$ (readline)))
+    (bind ?longitud (length ?aristas)))
+
   (printout t crlf)
 
-  ;TODO Valida estructura de la lista de aristas
-  ;TODO Imprime reglas aplicadas
+  ;Valida la estructura de la lista de aristas (, ... , A i j , ... ,)
+  (bind ?validas TRUE)
+  (bind ?i 1)
+  (bind ?m-aristas-leidas 0)
+  (while (< ?i ?longitud)
+    (if (neq (nth$ ?i ?aristas) ,)
+      then (bind ?validas FALSE))
 
-  (assert (aristas-leidas ?aristas)
-          (aristas-validas ,))
+    (if (not (symbolp (nth$ (+ ?i 1) ?aristas))) ;A
+      then (bind ?validas FALSE)
+           (break))
+
+    (if (not (numberp (nth$ (+ ?i 2) ?aristas))) ;i
+      then (bind ?validas FALSE)
+           (break))
+
+    (if (not (numberp (nth$ (+ ?i 3) ?aristas))) ;j
+      then (bind ?validas FALSE)
+           (break))
+
+    (bind ?m-aristas-leidas (+ ?m-aristas-leidas 1))
+    (bind ?i (+ ?i 4)))
+
+  (if (neq (nth$ ?longitud ?aristas) ,)
+    then (bind ?validas FALSE))
+
+  (if ?validas
+    then (assert (aristas-leidas ?m-aristas-leidas ?aristas)
+                 (aristas-validas 0 ,))
+
+    else (assert (lee-aristas ?m-aristas))
+         (printout t "--> La aristas introducidas no cumplen con la estructura del ejemplo." crlf))
 
 )
 
-(defrule valida-aristas-leidas "comprueba que las aristas introducidas manualmente son correctas"
-  ?al <- (aristas-leidas $?ai , ?s ?i ?j , $?af)
-  ?av <- (aristas-validas $?avs)
-  (numero-vertices-valido ?n-vertices)
-  (numero-aristas-valido ?m-aristas)
+(defrule valida-aristas-leidas "comprueba cada arista de la lista introducida es correcta"
+
+  ?al <- (aristas-leidas ?pendientes $?ai , ?s ?i ?j , $?af)
+  ?av <- (aristas-validas ?validadas $?avs)
+
+  (numero-vertices ?n-vertices)
+  (numero-aristas ?m-aristas)
 
   =>
   (retract ?al ?av)
 
-  (bind ?valido TRUE)
+  (bind ?valida TRUE)
 
   ;Validacion para la condicion 1 <= i < j <= numero de vertices.
   (if (or (<= ?i 0) (>= ?i ?j) (>= ?i ?n-vertices))
-    then (printout t "No se cumple la condicion 1 <= i < j <= numero de vertices para" ?s ?i ?j crlf)
-         (bind ?valido FALSE))
+    then (printout t "--> No se cumple la condicion 1 <= i < j <= numero de vertices para " ?s " " ?i " " ?j "." crlf)
+         (bind ?valida FALSE))
 
   ;Validacion del simbolo que denota a una arista.
   (if (neq ?s A)
-    then (printout t "El simbolo de la arista" ?s ?i ?j "no es correcto" crlf)
-         (bind ?valido FALSE))
+    then (printout t "--> El simbolo de la arista " ?s " " ?i " " ?j " no es correcto." crlf)
+         (bind ?valida FALSE))
 
   ;Validacion de aristas repetidas.
   (if (member$ (create$ ?s ?i ?j) $?avs)
-    then (printout t "La arista" ?s ?i ?j "ha sido introducida mas de una vez" crlf)
-         (bind ?valido FALSE))
+    then (printout t "--> La arista " ?s " " ?i " " ?j " ha sido introducida mas de una vez." crlf)
+         (bind ?valida FALSE))
 
-  ;TODO Validar numero de aristas
+  ;Validacion del numero de aristas.
+  (if (= ?pendientes 1)
+    then (if (<> (+ ?validadas 1) ?m-aristas)
+           then (printout t "--> El numero de aristas indicado no coincide con el numero de aristas introducidas." crlf)
+                (bind ?valida FALSE)))
 
-  (if ?valido
-    then (assert (aristas-leidas $?ai , $?af)
-                 (aristas-validas $?avs ?s ?i ?j ,))
+  (if ?valida
+    then (assert (aristas-leidas (- ?pendientes 1) $?ai , $?af)
+                 (aristas-validas (+ ?validadas 1) $?avs ?s ?i ?j ,))
 
-    else (assert (lee-aristas)))
+    else (assert (lee-aristas ?m-aristas)))
 
 )
 
 (defrule construye-instancia-3-col "genera la estructura completa que necesita el sistema para comenzar"
-  ?nv <- (numero-vertices-valido ?n)
-  ?ma <- (numero-aristas-valido ?m)
-  ?al <- (aristas-leidas ,)
-  ?av <- (aristas-validas $?avs)
+  ?nv <- (numero-vertices ?n-vertices)
+  ?ma <- (numero-aristas ?m-aristas)
+  ?al <- (aristas-leidas 0 ,)
+  ?av <- (aristas-validas ?m-aristas $?avs)
   ?vv <- (vertices-validos $?vvs)
 
   =>
@@ -370,8 +411,8 @@
           (paso-actual 1)
           (paso-siguiente 2))
 
-  (assert (instancia-3col (n-vertices ?n) (vertices $?vvs)
-                          (m-aristas ?m) (aristas $?avs)))
+  (assert (instancia-3col (n-vertices ?n-vertices) (vertices $?vvs)
+                          (m-aristas ?m-aristas) (aristas $?avs)))
 
 )
 
@@ -541,7 +582,7 @@
                               (elemento1-derecha z)))
 
   ;Comprueba si existen vertices que no han sido procesados.
-  (if (<> ?pendientes 1)
+  (if (> ?pendientes 1)
     then (assert (inicializa-vertices (- ?pendientes 1) $?vi , $?vf))
 
     else (assert (vertices))) ;Se han incluido todos los elementos de los vertices en las membranas correspondientes.
@@ -609,7 +650,7 @@
                               (elemento2-derecha GC ?j)))
 
   ;Comprueba si hay aristas que no han sido procesadas.
-  (if (<> ?pendientes 1)
+  (if (> ?pendientes 1)
     then (assert (inicializa-aristas (- ?pendientes 1) $?ai , $?af))
 
     else (assert (aristas))) ;Se han incluido todos los elementos de las aristas en las membranas correspondientes.
@@ -852,15 +893,29 @@
 
 )
 
+(defrule imprime-regla-aplicada
+  (estado actualizacion)
+  (paso-actual ?pactual)
+
+  (not (membrana (configuracion ?pactual)))
+
+  ?imprime <- (imprime-regla-aplicada $?regla)
+
+  =>
+  (retract ?imprime)
+  (printout t "     Aplica Regla > " $?regla  crlf)
+
+)
+
 (defrule imprime-entorno
   (declare (salience 99))
 
   (estado actualizacion)
-
   (paso-actual ?pactual)
   (paso-siguiente ?psiguiente)
 
   (not (membrana (configuracion ?pactual)))
+  (not (imprime-regla-aplicada $?))
 
   ?imprime <- (imprime-membrana 0)
 
@@ -871,7 +926,7 @@
 
   =>
   (retract ?imprime)
-
+  (printout t crlf)
   (printout t "   CONFIGURACION " ?psiguiente ":" crlf)
   (printout t "   Entorno " $?c  crlf)
 
@@ -881,11 +936,11 @@
   (declare (salience 98))
 
   (estado actualizacion)
-
   (paso-actual ?pactual)
   (paso-siguiente ?psiguiente)
 
   (not (membrana (configuracion ?pactual)))
+  (not (imprime-regla-aplicada $?))
 
   ?imprime <- (imprime-membrana 1)
 
@@ -904,22 +959,21 @@
   (declare (salience 97))
 
   (estado actualizacion)
-
   (paso-actual ?pactual)
   (paso-siguiente ?psiguiente)
 
   (not (membrana (configuracion ?pactual)))
+  (not (imprime-regla-aplicada $?))
 
   ?imprime <- (imprime-membrana ?id&~0&~1)
 
-  ?membrana <- (membrana (etiqueta ?etiqueta&~0&~1)
+  ?membrana <- (membrana (etiqueta 2)
                          (identificador ?id)
                          (configuracion ?psiguiente)
                          (contenido $?c))
 
   =>
   (retract ?imprime)
-
   (printout t "   M2." ?id " " $?c  crlf)
 
 )
@@ -930,7 +984,10 @@
   (paso-siguiente ?psiguiente)
 
   (not (membrana (configuracion ?pactual)))
+
+  ;Se han terminado de imprimir los datos de la transicion actual.
   (not (imprime-membrana ?))
+  (not (imprime-regla-aplicada $?))
 
   ;El sistema no se encuenta en la configuracion de parada.
   (not (membrana (etiqueta 0)
@@ -983,6 +1040,10 @@
   (paso-siguiente ?psiguiente)
 
   (not (membrana (configuracion ?pactual)))
+
+  ;Se han terminado de imprimir los datos de la transicion actual.
+  (not (imprime-membrana ?))
+  (not (imprime-regla-aplicada $?))
 
   (membrana (etiqueta 0)
             (configuracion ?psiguiente)
@@ -1040,7 +1101,7 @@
   ; no se puede volver a aplicar una regla sobre Ri pues el Ri que introduce la parte derecha es otro y por tanto no puede ser afectado
   ; hasta el siguiente paso segun el modelo de computacion celular basado en tejidos. Entonces, como solucion, se ha optado por
   ; introducir un numero de copias igual a el numero de vertices del problema en el momento de incluir un simbolo que asigne un color a
-  ; un vertice. De esta manera se controla cualquier numero de aristas que involucren a un mismo vertice, pues un vertice nunca tendra
+  ; un vertice. De esta manera, se controla cualquier numero de aristas que involucren a un mismo vertice, pues un vertice nunca tendra
   ; mas aristas que vertices existen en el grafo que codifica el problema.
 
   (assert (membrana (etiqueta ?etiqueta)
@@ -1064,10 +1125,11 @@
   (assert (imprime-membrana (+ ?*id* 1))
           (imprime-membrana (+ ?*id* 2)))
 
+  ;Hecho para imprimir las reglas aplicadas al finalizar la transicion entre configuraciones.
+  (assert (imprime-regla-aplicada ?etiqueta [ $?elemento-izquierda ] > [ $?elemento1-derecha ][ $?elemento2-derecha ]))
+
   ;Incrementa el valor referencia del identificador de membranas.
   (bind ?*id* (+ ?*id* 2))
-
-
 
 )
 
@@ -1207,5 +1269,9 @@
       ;Si se trata del entorno y el elemento a introducir es la respuesta, ha de incluirse en el mismo.
       else (if (or (member$ yes $?elemento2-izquierda) (member$ no $?elemento2-izquierda))
              then (modify ?md-siguiente (contenido , $?elemento2-izquierda ?contenido-md-siguiente))))
+
+    ;Hecho para imprimir las reglas aplicadas.
+    (assert (imprime-regla-aplicada ?etiqueta-izquierda , $?elemento1-izquierda $?elemento2-izquierda /
+                                                      $?elemento1-derecha $?elemento2-derecha , ?etiqueta-derecha))
 
 )
