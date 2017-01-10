@@ -10,21 +10,18 @@
 ; dichas regiones. De manera que, los datos de entrada del sistema seran los elementos (vertices y aristas) del grafo
 ; correspondiente al mapa sobre el que se desea obtener una respuesta.
 
-;TODO BREVE EXPLICACION DEL MODELO DE COMPUTACION CELULAR CON MEMBRANAS BASADO EN TEJIDOS
-;TODO BREVE EXPLICACION DEL SISTEMA IMPLEMENTADO (ESTRUCTURAS DE DATOS, REGLAS, HECHOS, INTERFAZ, USO DE INTERFAZ Y EJEMPLOS PREDEFINIDOS)
 
 ;BIBLIOGRAFIA (REFERENCIAS Y DOCUMENTACION)
-;REFERENCIAS
-;R1. Every planar graph is four colorable - Part1: Discharging
+
+;R1.Every planar graph is four colorable - Part1: Discharging
 ;   [https://projecteuclid.org/euclid.ijm/1256049011]
-;R2. Every planar graph is four colorable - Part2: Reducibility
+;R2.Every planar graph is four colorable - Part2: Reducibility
 ;   [https://projecteuclid.org/euclid.ijm/1256049012]
-;R3. Solving 3-COL with Tissue P Systems
+;R3.Solving 3-COL with Tissue P Systems
 ;   [http://www.gcn.us.es/4BWMC/vol2/diaz.pdf]
-;R4. A uniform family of tP systems with cell division solving 3-COL in a linear time
+;R4.A uniform family of tP systems with cell division solving 3-COL in a linear time
 ;   [http://www.sciencedirect.com/science/article/pii/S030439750800251X]
 
-;DOCUMENTACION
 ;D1.CLIPS Documentation
 ;   [http://www.clipsrules.net/?q=Documentation]
 ;D2.CLIPS Basic Reference Guide
@@ -36,19 +33,74 @@
 ;D5.A CLIPS simulator for Recognizer P Systems with Active Membranes
 ;   [http://cantor.cs.us.es/2BWMC/bravolpdf/CLIPS.pdf]
 
+;BREVE EXPLICACION DE LA IMPLEMENTACION LLEVADA A CABO.
+
+;La aplicacion incluye una interfaz de usuario de manera que, al cargar el fichero, permite seleccionar una serie
+; de opciones para la ejecucion de la misma. Las opciones disponibles son, lanzar el proceso de resolucion para un ejemplo
+; concreto (se proporcionan dos ejemplos), y lanzar el proceso de resolucion para un ejemplo especificado manualmente. Si se
+; especifica el ejemplo manualmente, este debe ser introducido segun la sintaxis especificada en su momento.
+;
+;Por otra parte, se han incluido una serie de reglas para imprimir por pantalla los datos de las distintas configuraciones por las
+; que pasa el sistema en la resolucion del problema. Tambien se imprimen las reglas aplicadas a cada configuracion para llegar a la
+; siguiente.
+;
+;El resto de la implementacion se basa en el modelo de computacion celular a modo tejido con membranas activas. En primer lugar,
+; se lleva a cabo una inicializacion que permite obtener el sistema P concreto que servira para obtener una solucion al problema.
+; Dicha inicializacion se realiza a partir de los datos de entrada que codifican la instancia del problema a resolver.
+;
+;Tras la inicializacion, comienza la computacion. Se han implementado varias reglas auxiliares para llevar a cabo las acciones necesarias
+; para el paso de una configuracion a otra y en definitiva determinar cuando termina un paso de la computacion y comienza uno nuevo,
+; asi como, para determinar el final de la computacion debido a la llegada del sistema a una configuracion de parada. En cada paso
+; de la computacion se podran aplicar dos tipos de reglas de acuerdo al modelo computacional, de division y de comunicacion. La aplicacion
+; de dichas regla deben cumplir una serie de restricciones indicadas mas adelante.
+;
+;Para simplificar, en la medida de lo posible, la implementacion de las reglas de division y comunicacion se han usado varias
+; funciones auxiliares con objeto de abstraer a la propia regla de los procesos de manipulacion de las estructuras de datos. Dichas
+; funciones cubren operaciones como las de inlcuir/eliminar elementos del contenido de una membrana, asi como la de comprobar si
+; existe un elemento en el contenido de las mismas.
+
 ;ESTRUCTURAS DE DATOS
+
+; Los elementos que forman parte del alfabeto de trabajo del sistema se denotan de la siguente forma: SIMBOLO INDICE-i INDICE-j
+;  Un elemento puede tener uno, dos indices o ninguno y cuando se trata del contenido de una membrana deben incluir el numero
+;  de copias del mismo. Excepcionalmente, el contenido de la membrana etiquetada con 0 (modela al entorno), no indica el numero de copias
+;  de cada elemento porque se supone que siempre tendra el numero de copias necesarias de cada uno de los que contiene. Por tanto, para
+;  simplificar y ganar algo de eficiencia en el proceso, su contenido permanece inalterado hasta que se incluya uno de los elementos
+;  de respuesta como solucion del problema.
+;
+; Ademas, cada elemento debe separarse mediante comas, incluyendo una coma inicial y una final para delimitar la lista de los mismos.
+;  De esta manera en el contenido de una membrana que no sea el entorno tendrian la forma siguiente:
+;  , ... , COPIAS SIMBOLO INDICE-i INDICE-j , ... ,
+;  Y en el contenido de la membrana que modela al entorno seria de la forma:
+;  , ... , SIMBOLO INDICE-i INDICE-j , ... ,
+;
+; El uso de la coma como separador sirve para que en la equiparacion de patrones de CLIPS puedan seleccionarse los elementos
+;  correctamente y no haya posibles activaciones con subcadenas que no referencian a un elemento concreto.
+;
+; Con respecto a la inclusion de un contador de copias, se llego a la conclusion de que era la mejor opcion tras probar
+;  con la opcion de generar tantos elementos como copias eran necesarias de cada uno, pues el proceso se hacía tremendamente costoso
+;  para la equiparacion de patrones de CLIPS. Ademas, si teniamos 4 elementos , C 3 , C 3 , C 3 , C 3 , y una regla que afectara a C 3,
+;  se producian muchas activaciones innecesarias para la misma regla en un paso, a pesar de que solo se llegue a disparar una.
+
 (deftemplate membrana "datos que definen una membrana dentro del sistema p"
 
   (slot etiqueta
     (type INTEGER))
-  (slot identificador
-    (type INTEGER))
+  (slot identificador   ;La etiqueta de una membrana es insifuciente para identificar cada membrana, pues puede haber
+    (type INTEGER))     ; multiples membranas con una misma etiqueta.
   (slot configuracion
     (type INTEGER)
     (default 1))
-  (multislot contenido) ; , ... , copias elemento indice-1 inidice-2 ... , ... ,
+  (multislot contenido) ; , ... , [COPIAS] SIMBOLO [INDICE-i] [INDICE-j] , ... ,
 
 )
+
+;Es necesario la definicion de estructuras de datos para las reglas del sistema P concreto, pues estas dependen de los
+; datos de entrada del mismo. Solo hay dos tipos de reglas, pero cada tipo de regla puede tener multiples instancias que realizan
+; acciones diferentes o afectan a elementos distintos.
+;
+;En los casos de las reglas cada elemento se especifica como SIMBOLO INDICE-i INDICE-j, al indicar un unico elemento
+; no es necesario incluir comas.
 
 (deftemplate regla-division "datos que definen una regla de division para el sistema p"
 
@@ -81,15 +133,10 @@
 
 )
 
-(deftemplate envia-elemento "datos referentes al envio de un elemento desde una membrana a otra"
-
-  (slot identificador-emisor
-    (type INTEGER))
-  (slot identificador-receptor
-    (type INTEGER))
-  (multislot elemento-enviado)
-
-)
+;Los datos referentes a una instancia del problema son agrupados en una estructura de datos por comodidad y para activar
+; la inicializacion del sistema. Aqui al igual que en las membranas se hace uso del mismo formato para determinar
+; los elementos referentes a los vertices y las aristas, salvo por la no inclusion del numero de copias que no es necesario en
+; este caso.
 
 (deftemplate instancia-3col "datos que definen una instancia del problema 3-COL a partir del grafo que la codifica"
 
@@ -235,7 +282,7 @@
 
 )
 
-;Reglas que gestionan los datos a introducir por parte del usuario, si se ha escogido la opcion manual.
+;Gestion de los datos a introducir por parte del usuario, si se ha escogido la opcion manual.
 (defrule lee-numero-vertices-y-aristas "se encarga de leer y validar los datos de entrada referentes al numero de vertices y aristas"
 
   ?lnva <- (lee-numero-vertices-y-aristas)
@@ -398,6 +445,7 @@
 )
 
 (defrule construye-instancia-3-col "genera la estructura completa que necesita el sistema para comenzar"
+
   ?nv <- (numero-vertices ?n-vertices)
   ?ma <- (numero-aristas ?m-aristas)
   ?al <- (aristas-leidas 0 ,)
@@ -448,16 +496,16 @@
               (identificador 1)
               (contenido , 1 a 1 , 1 b , 1 c 1 , 1 yes , 1 no ,))
 
-    ;La membrana 2 contiene, entre otros, los elementos de entrada que codifican una instancia del problema 3-COL. Por tanto
+    ;La membrana 2 contiene, entre otros, los elementos de entrada que codifican una instancia del problema 3-COL, por lo tanto
     ; tambien requiere ser inicializada con dichos elementos.
     (membrana (etiqueta 2)
               (identificador 2)
               (contenido , 1 D ,)))
 
 
-  ;INSTANCIAS DE LAS REGLAS
+  ;REGLAS DEL SISTEMA P
 
-  (assert ;REGLAS DE COMUNICACION (1 <-> 0)
+  (assert ;COMUNICACION (1 <-> 0)
           (regla-comunicacion (etiqueta-izquierda 1)  ;r22
                               (elemento1-izquierda b)
                               (elemento2-izquierda t)
@@ -480,7 +528,7 @@
                               (elemento2-izquierda no)
                               (etiqueta-derecha 0)))
 
-  (assert ;REGLAS DE COMUNICACION (2 <-> 0)
+  (assert ;COMUNICACION (2 <-> 0)
           (regla-comunicacion (etiqueta-izquierda 2) ;r6
                               (elemento1-izquierda c (+ (* 2 ?*n-vertices*) 1))
                               (etiqueta-derecha 0)
@@ -504,13 +552,13 @@
                               (etiqueta-derecha 0)
                               (elemento1-derecha t))
 
-          ;REGLAS DE COMUNICACION (1 <-> 2)
+          ;COMUNICACION (1 <-> 2)
           (regla-comunicacion (etiqueta-izquierda 1) ;r5
                               (elemento1-izquierda c (+ (* 2 ?*n-vertices*) 1))
                               (etiqueta-derecha 2)
                               (elemento1-derecha D))
 
-          ;REGLAS DE COMUNICACION (2 <-> 1)
+          ;COMUNICACION (2 <-> 1)
           (regla-comunicacion (etiqueta-izquierda 2) ;r21
                               (elemento1-izquierda t)
                               (etiqueta-derecha 1)))
@@ -550,8 +598,9 @@
   (modify ?entorno (contenido $?c0 A ?i , R ?i , T ?i , B ?i , G ?i , RC ?i , BC ?i , GC ?i ,))
   (modify ?entrada (contenido $?c2 1 A ?i ,))
 
-  ;Reglas asociadas a los vertices.
-  ;REGLAS DE DIVISION
+  ;REGLAS ASOCIADAS A LOS VERTICES
+
+  ;DIVISION
   (assert (regla-division (etiqueta 2) ;r1i
                            (elemento-izquierda A ?i)
                            (elemento1-derecha R ?i)
@@ -562,7 +611,7 @@
                            (elemento1-derecha B ?i)
                            (elemento2-derecha G ?i)))
 
-   ;REGLAS DE COMUNICACION (2 <-> 0)
+   ;COMUNICACION (2 <-> 0)
    (assert (regla-comunicacion (etiqueta-izquierda 2) ;r16i
                               (elemento1-izquierda R ?i)
                               (elemento2-izquierda RC ?i)
@@ -608,8 +657,9 @@
   (modify ?entorno (contenido $?c0 P ?i ?j , PC ?i ?j , R ?i ?j , B ?i ?j , G ?i ?j ,))
   (modify ?entrada (contenido $?c2 1 A ?i ?j ,))
 
-  ;Reglas asociadas a las aristas.
-  ;REGLAS DE COMUNICACION (2 <-> 0)
+  ;REGLAS ASOCIADAS A LAS ARISTAS
+
+  ;COMUNICACION (2 <-> 0)
   (assert (regla-comunicacion (etiqueta-izquierda 2)  ;r10ij
                               (elemento1-izquierda d (+ ?*techo-log2-m* 1))
                               (elemento2-izquierda A ?i ?j)
@@ -679,8 +729,9 @@
              ;Genera la lista de elementos referentes al contador correspondiente.
              (while (< ?indice-a ?limite-a)
 
-                ;Regla asociada al contador a con indice i
-                ;REGLA DE COMUNICACION (1 <-> 0)
+                ;REGLAS ASOCIADA AL CONTADOR a CON INDICE i
+
+                ;COMUNICACION (1 <-> 0)
                 (assert (regla-comunicacion (etiqueta-izquierda 1) ;r3i
                                             (elemento1-izquierda a ?indice-a)
                                             (etiqueta-derecha 0)
@@ -695,8 +746,9 @@
              (bind ?limite-c (+ (* 2 ?*n-vertices*) 1))
              (while (< ?indice-c ?limite-c)
 
-                ;Regla asociada al contador c con indice i
-                ;REGLA DE COMUNICACION (1 <-> 0)
+                ;REGLAS ASOCIADA AL CONTADOR c CON INDICE i
+
+                ;COMUNICACION (1 <-> 0)
                 (assert (regla-comunicacion (etiqueta-izquierda 1) ;r4i
                                             (elemento1-izquierda c ?indice-c)
                                             (etiqueta-derecha 0)
@@ -712,8 +764,9 @@
              (bind ?limite-d (+ ?*techo-log2-m* 1))
              (while (< ?indice-d ?limite-d)
 
-                ;Regla asociada al contador d con indice i
-                ;REGLA DE COMUNICACION (2 <-> 0)
+                ;REGLAS ASOCIADA AL CONTADOR d CON INDICE i
+
+                ;COMUNICACION (2 <-> 0)
                 (assert (regla-comunicacion (etiqueta-izquierda 2) ;r7i
                                             (elemento1-izquierda d ?indice-d)
                                             (etiqueta-derecha 0)
@@ -729,8 +782,9 @@
              (bind ?limite-f (+ ?*techo-log2-m* 7))
              (while (< ?indice-f ?limite-f)
 
-                ;Regla asociada al contador f con indice i
-                ;REGLA DE COMUNICACION (2 <-> 0)
+                ;REGLAS ASOCIADA AL CONTADOR f CON INDICE i
+
+                ;COMUNICACION (2 <-> 0)
                 (assert (regla-comunicacion (etiqueta-izquierda 2) ;r9i
                                            (elemento1-izquierda f ?indice-f)
                                            (etiqueta-derecha 0)
@@ -786,6 +840,16 @@
   (assert (estado transicion))
 
   ;Incluye copias de las membranas 0, 1 y 2 con el indice de la configuracion siguiente.
+
+  ;Las copias con el indice de la configuracion siguiente reflejaran los cambios producidos en las membranas con configuracion
+  ; actual a partir de la aplicacion de reglas. Las membranas actuales actualizan tambien su contenido en funcion de la regla aplicada
+  ; para evitar la aplicacion de nuevas reglas debidas a un elemento que ya ha reaccionado a una regla.
+  ;
+  ;En un paso de la computacion, cada elemento de una membrana con la configuracion actual puede ser afectado unicamente por una regla
+  ; (si hay varias que puedan aplicarse se escogen de manera no determinista) y todo elemento de la membrana al que se le pueda aplicar
+  ; una regla debe verse afectado por la misma. Un elemento obtenido a partir de la aplicacion de una regla no puede activar una regla
+  ; hasta el siguiente paso de la computacion, es decir, hasta la siguiente configuracion del sistema.
+
   (assert (membrana (etiqueta 0)
                     (identificador 0)
                     (configuracion 2)
@@ -875,6 +939,10 @@
 
   =>
   (retract ?estado)
+
+  ;Cambia el estado del sistema para realizar las acciones necesarias con objeto
+  ; de preparar el sistema para el siguiente paso de la computacion.
+
   (assert (estado actualizacion))
 
 )
@@ -893,7 +961,7 @@
 
 )
 
-(defrule imprime-regla-aplicada
+(defrule imprime-regla-aplicada "imprime las reglas aplicadas durante el paso actual de la computacion"
   (estado actualizacion)
   (paso-actual ?pactual)
 
@@ -907,7 +975,7 @@
 
 )
 
-(defrule imprime-entorno
+(defrule imprime-entorno "imprime por pantalla el contenido del entorno al final de una transicion"
   (declare (salience 99))
 
   (estado actualizacion)
@@ -932,7 +1000,7 @@
 
 )
 
-(defrule imprime-membrana-1
+(defrule imprime-membrana-1 "imprime por pantalla el contenido de la membrana etiquetada por uno al final de la transicion"
   (declare (salience 98))
 
   (estado actualizacion)
@@ -955,7 +1023,7 @@
 
 )
 
-(defrule imprime-membrana-2
+(defrule imprime-membrana-2 "imprime el contenido de las membranas etiquetadas por dos al final de la transicion"
   (declare (salience 97))
 
   (estado actualizacion)
@@ -1102,7 +1170,9 @@
   ; hasta el siguiente paso segun el modelo de computacion celular basado en tejidos. Entonces, como solucion, se ha optado por
   ; introducir un numero de copias igual a el numero de vertices del problema en el momento de incluir un simbolo que asigne un color a
   ; un vertice. De esta manera, se controla cualquier numero de aristas que involucren a un mismo vertice, pues un vertice nunca tendra
-  ; mas aristas que vertices existen en el grafo que codifica el problema.
+  ; mas aristas que vertices existen en el grafo que codifica el problema. Y asi, la obtencion  de las versiones complementadas de los
+  ; colores podran obtenerse en un unico paso sin descuadrar el valor de los contadores del sistema y permitiendo llegar a la solucion
+  ; de manera satisfactoria segun el conjunto de reglas que definen el sistema.
 
   (assert (membrana (etiqueta ?etiqueta)
                     (identificador (+ ?*id* 1))
@@ -1213,6 +1283,7 @@
       (test (existe-elemento $?cs-derecha 1 $?elemento2-derecha))))
 
   =>
+  ;Asignacion de variables para que el contenido vaya actualizandose adecuadamente en cada caso.
   (bind ?contenido-mi-actual $?ca-izquierda)
   (bind ?contenido-mi-siguiente $?cs-izquierda)
   (bind ?contenido-md-actual $?ca-derecha)
@@ -1222,6 +1293,9 @@
   (if (eq $?elemento1-izquierda $?elemento2-izquierda)
     then (bind ?contenido-mi-actual    (elimina-elementos ?contenido-mi-actual 2 $?elemento1-izquierda))
          (bind ?contenido-mi-siguiente (elimina-elementos ?contenido-mi-siguiente 2 $?elemento1-izquierda))
+
+         ;El entorno permanece inalterado segun el supuesto inicial de que contiene todas las copias suficientes
+         ; que precise el sistema de cada elemento.
 
          (if (<> ?etiqueta-derecha 0)
           then (bind ?contenido-md-siguiente (agrega-elementos ?contenido-md-siguiente 2 $?elemento1-izquierda)))
@@ -1257,10 +1331,6 @@
     ;Modifica el contenido de cada membrana producto de la comunicacion.
     (modify ?mi-actual    (contenido ?contenido-mi-actual))
     (modify ?mi-siguiente (contenido ?contenido-mi-siguiente))
-
-    ;Se considera que en el entorno hay un numero suficiente de copias de cada elemento para llevar a cabo el proceso,
-    ; por tanto, para mejorar la eficiencia con respecto a la equiparacion de patrones de CLIPS, se ha optado por no
-    ; alterar el contenido del mismo, salvo para introducir la respuesta final al problema.
 
     (if (<> ?etiqueta-derecha 0)
       then  (modify ?md-actual    (contenido ?contenido-md-actual))
