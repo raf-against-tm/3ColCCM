@@ -75,7 +75,7 @@
 ;  , ... , SIMBOLO INDICE-i INDICE-j , ... ,
 ;
 ; El uso de la coma como separador sirve para que en la equiparacion de patrones de CLIPS puedan seleccionarse los elementos
-;  correctamente y no haya posibles activaciones con subcadenas que no referencian a un elemento concreto.
+;  correctamente y no haya posibles activaciones con subcadenas que no referencian a un elemento concreto. [D5]
 ;
 ; Con respecto a la inclusion de un contador de copias, se llego a la conclusion de que era la mejor opcion tras probar
 ;  con la opcion de generar tantos elementos como copias eran necesarias de cada uno, pues el proceso se hacía tremendamente costoso
@@ -97,7 +97,7 @@
 
 ;Es necesario la definicion de estructuras de datos para las reglas del sistema P concreto, pues estas dependen de los
 ; datos de entrada del mismo. Solo hay dos tipos de reglas, pero cada tipo de regla puede tener multiples instancias que realizan
-; acciones diferentes o afectan a elementos distintos.
+; acciones diferentes o afectan a elementos distintos. [D5]
 ;
 ;En los casos de las reglas cada elemento se especifica como SIMBOLO INDICE-i INDICE-j, al indicar un unico elemento
 ; no es necesario incluir comas.
@@ -120,7 +120,7 @@
 
   ;Una regla de comunicacion tiene como maximo 4 elementos, 2 maximo por parte de la membrana con etiqueta-izquierda
   ; y otros 2 maximo por parte de la membrana con etiqueta-derecha. Los elementos especificados de cada membrana seran
-  ; los intercambiados entre las mismas.
+  ; los intercambiados entre las mismas. [R3 y R4]
 
   (slot etiqueta-izquierda
     (type INTEGER))
@@ -843,12 +843,12 @@
 
   ;Las copias con el indice de la configuracion siguiente reflejaran los cambios producidos en las membranas con configuracion
   ; actual a partir de la aplicacion de reglas. Las membranas actuales actualizan tambien su contenido en funcion de la regla aplicada
-  ; para evitar la aplicacion de nuevas reglas debidas a un elemento que ya ha reaccionado a una regla.
+  ; para evitar la aplicacion de nuevas reglas debidas a un elemento que ya ha reaccionado a una regla. [D5]
   ;
   ;En un paso de la computacion, cada elemento de una membrana con la configuracion actual puede ser afectado unicamente por una regla
   ; (si hay varias que puedan aplicarse se escogen de manera no determinista) y todo elemento de la membrana al que se le pueda aplicar
   ; una regla debe verse afectado por la misma. Un elemento obtenido a partir de la aplicacion de una regla no puede activar una regla
-  ; hasta el siguiente paso de la computacion, es decir, hasta la siguiente configuracion del sistema.
+  ; hasta el siguiente paso de la computacion, es decir, hasta la siguiente configuracion del sistema. [R3, R4, D3 y D4]
 
   (assert (membrana (etiqueta 0)
                     (identificador 0)
@@ -976,7 +976,7 @@
 )
 
 (defrule imprime-entorno "imprime por pantalla el contenido del entorno al final de una transicion"
-  (declare (salience 99))
+  (declare (salience 99)) ;Se imprime en primer lugar.
 
   (estado actualizacion)
   (paso-actual ?pactual)
@@ -1001,7 +1001,7 @@
 )
 
 (defrule imprime-membrana-1 "imprime por pantalla el contenido de la membrana etiquetada por uno al final de la transicion"
-  (declare (salience 98))
+  (declare (salience 98)) ;Se imprime en segundo lugar.
 
   (estado actualizacion)
   (paso-actual ?pactual)
@@ -1024,7 +1024,7 @@
 )
 
 (defrule imprime-membrana-2 "imprime el contenido de las membranas etiquetadas por dos al final de la transicion"
-  (declare (salience 97))
+  (declare (salience 97)) ; Se imprime en ultimo lugar.
 
   (estado actualizacion)
   (paso-actual ?pactual)
@@ -1133,7 +1133,7 @@
 
 ;Si se aplica una regla de division, en el mismo paso de la transicion no podra aplicarse ninguna otra regla ya sea
 ; de division o de comunicacion. Este hecho se controla de manera que al aplicar la regla de division se eliminan las membranas
-; con configuracion actual por lo que no podra volverse a interactuar con ella hasta el siguiente paso de la transicion.
+; con configuracion actual por lo que no podra volverse a interactuar con ella hasta el siguiente paso de la transicion. [R3, R4, D3 y D4]
 
 (defrule division "crea dos nuevas membranas en sustitucion de una existente y a partir de una regla de division concreta"
 
@@ -1208,7 +1208,7 @@
 ;En un paso de la transicion pueden aplicarse varias reglas de comunicacion en caso de que en la membrana existan elementos que activen
 ; dichas reglas. Los elementos obtenidos de la aplicacion de una regla no se tienen en cuenta para la activacion de reglas hasta el
 ; siguiente paso. La longitud maxima de una regla es de cuatro, es decir, como maximo se envian dos elementos desde ambas membranas
-; involucradas en la comunicacion.
+; involucradas en la comunicacion. [R3, R4, D3 y D4]
 
 (defrule comunicacion
 
